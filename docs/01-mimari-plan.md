@@ -1,8 +1,8 @@
-# ŞantiyeCep: Mimari Plan (İlk Görev Çıktısı)
+# Hafriyol: Mimari Plan (İlk Görev Çıktısı)
 
-> Durum: **Taslak.** Bu belge kod yazmadan önceki planı tanımlar. Veritabanı taslağı
-> (`supabase/migrations/`) yerel PostgreSQL 16 üzerinde test edildi. Gerçek bir
-> Supabase projesine henüz **uygulanmadı**.
+> Durum: **Taslak.** Bu belge kod yazmadan önceki planı tanımlar. Veritabanı şeması
+> (`supabase/migrations/`) yerel PostgreSQL 16 üzerinde test edildi ve Supabase'teki
+> `hafriyol` projesine (Frankfurt, ücretsiz plan) uygulandı.
 
 ## 1. Ürün özeti
 
@@ -139,7 +139,8 @@ gerekir.
 | Saha personeli birim fiyatları görüyor | Orta | 2. sürümde şantiye ataması ve fiyat gizleme gelecek. |
 | Owner'ın kendi rolünü düşürmesi, firmanın sahipsiz kalması | Düşük | Uygulama tarafında "son owner'ı kaldıramazsın" kontrolü eklenecek. |
 | Kullanıcıların Excel alışkanlığı | Yüksek (satış) | İçe aktarma ve Excel çıktısı önceliklidir. Ekranlar Excel kadar hızlı olmalıdır. |
-| Rakipler mevcut | Yüksek (satış) | Odak: Türkçe, yol/hafriyat özelinde, sade, ucuz. Müşteri görüşmeleri koddan önce. |
+| Rakipler mevcut | Yüksek (satış) | Türkiye'de genel şantiye uygulamaları var (ör. Sitabula, ŞantiyeX). Odak: Türkçe, yol/hafriyat özelinde, sefer ve imalat ağırlıklı, sade, ucuz. Müşteri görüşmeleri koddan önce. |
+| Şantiye-M zorunluluğu | Orta | Bakanlığın Şantiye-M uygulaması 1 Ocak 2026'dan itibaren zorunlu bir şantiye defteri. Hafriyol onun yerine geçmez, ama aynı verinin iki kez girilmemesi için ilerde dışa aktarma ve uyum incelenmeli. |
 | Yedek / veri kaybı | Yüksek | Supabase günlük yedek (ücretli plan). Pilot öncesi geri yükleme denemesi yapılacak. |
 | Kamu görevlisi olarak ticari faaliyet | Hukuki | Kurum kaynağı kullanılmaz. Ücretli satıştan önce mevzuat ve etik kurallar netleştirilir. |
 
@@ -160,6 +161,7 @@ gerekir.
 | T9 | 120,5 + 79,5 m³ × 85,50 TL = 17.100,00 TL; gerçekleşme %2,00; birim maliyet 15,00 TL/m³; 1.234,56 TL'nin %20 KDV'si 246,91 TL | ✅ |
 | T10 | Kayıtlar işlem geçmişine yazılır, kullanıcı geçmişi silemez | ✅ |
 | T11 | Oturum açmamış kullanıcı hiçbir tabloyu okuyamaz | ✅ |
+| T12 | Eski yetki yardımcıları API'den çağrılamaz | ✅ |
 
 ### Uygulama (sonraki görevlerde yazılacak, Playwright ile)
 
@@ -187,9 +189,38 @@ gerekir.
 4. **Hafta 4:** Telefon testleri, yetki testleri (K8), yedekten geri yükleme
    denemesi, pilot kullanıcı.
 
-## 10. Karar bekleyen konular
+## 10. Ürün adı: Hafriyol
 
-1. **Supabase projesi.** Yeni bir proje mi açalım, yoksa mevcut bir projeyi mi
-   kullanalım? Bölge olarak Frankfurt (eu-central-1) öneriyorum.
-2. **Ürün adı.** "ŞantiyeCep" geçici. Repo adı şu an `Ara-takip`.
-3. **Pilot firma.** Hafta 4 için en az bir gönüllü firma gerekiyor.
+**Hafriyat + yol.** Hedef müşterinin iki ana işini tek kelimede söylüyor. Türkiye'de
+akılda kalmış "-yol" ile biten marka kalıbını da çağrıştırıyor.
+
+- Türkçe karakter yok (ş, ı, ğ). Alan adı, e-posta ve uygulama mağazasında sorun çıkmaz.
+- 3 hece, telefonda söylenince yanlış yazılmaz.
+- Arama sonuçlarında aynı adda ürün çıkmadı.
+- Önceki geçici ad "ŞantiyeCep" App Store'da başka bir uygulamaya ait olduğu için
+  bırakıldı.
+
+Satışa çıkmadan önce yapılacaklar: `hafriyol.com` ve `hafriyol.com.tr` alan adlarının
+alınması, TÜRKPATENT'te marka araştırması (sınıf 9 ve 42).
+
+## 11. Eski projeden alınacak fikirler (2. sürüm adayları)
+
+Daha önce yazılan "Kırsal Yol Bakım ve Şantiye Yönetim Sistemi" projesinden kod
+alınmadı, sadece fikirler not edildi. O proje bir kuruma özeldi; Hafriyol yeni ve
+bağımsız bir üründür. Kurum verisi kullanılmaz.
+
+| Fikir | Neden değerli |
+| --- | --- |
+| **Şişirilmiş sefer denetimi** | Güzergâh km'si ve çevrim süresine göre bir aracın bir günde yapabileceği en fazla sefer hesaplanır. Fazlası işaretlenir. Taşeron kamyon ödemelerinde doğrudan para kazandırır; güçlü bir satış argümanı. |
+| **Kantar / hızlı sefer girişi** | Plaka seç, tek dokunuşla +1 sefer. Saha personeli için en hızlı ekran. |
+| **Geçerlilik tarihli fiyatlar** | Mazot, şoför yevmiyesi gibi fiyatlar değişince eski satır değiştirilmez, yeni tarihli satır eklenir. Geriye dönük raporlar doğru kalır. |
+| **Yakıt norm kontrolü** | Araç başına beklenen tüketimin dışına çıkan mazot kaydı kırmızı gösterilir. |
+| **Bakım / muayene / sigorta hatırlatmaları** | Filo sahibi firmalar için günlük kullanım sebebi olur. |
+| **Çevrimdışı kayıt** | Şantiyede çekim yoksa kayıt telefonda bekler, internet gelince gönderilir. Pilotta ihtiyaç ölçülecek. |
+
+## 12. Karar bekleyen konular
+
+1. **Pilot firma.** Hafta 4 için en az bir gönüllü firma gerekiyor.
+2. **Eski yetki fonksiyonlarının silinmesi.** `public.is_member` ve `public.has_role`
+   artık kullanılmıyor ve çağrılamıyor. Silmek için Supabase'te onay gerekiyor;
+   zararsız oldukları için bir sonraki migration'a bırakıldı.

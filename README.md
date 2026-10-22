@@ -1,9 +1,9 @@
-# ŞantiyeCep (geçici ad)
+# Hafriyol
 
 Küçük ve orta ölçekli yol, altyapı ve hafriyat firmaları için şantiye imalat, sefer,
 gider ve dönem raporu takip uygulaması.
 
-**Durum:** Planlama aşaması. Uygulama kodu henüz yok.
+**Durum:** Planlama aşaması. Veritabanı Supabase'e kuruldu (`hafriyol` projesi, Frankfurt), uygulama kodu henüz yok.
 
 - Mimari plan, ekranlar, riskler, kabul testleri: [`docs/01-mimari-plan.md`](docs/01-mimari-plan.md)
 - Veritabanı şeması (taslak): [`supabase/migrations/`](supabase/migrations/)

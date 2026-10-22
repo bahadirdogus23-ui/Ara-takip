@@ -1,4 +1,4 @@
--- ŞantiyeCep veritabanı kabul testleri.
+-- Hafriyol veritabanı kabul testleri.
 -- İki firma (A ve B) ve farklı rollerdeki kullanıcılarla firma ayrımını,
 -- rol yetkilerini, veri doğrulamayı ve özet hesaplarını sınar.
 -- Her test başarısız olursa hata fırlatır; betik ON_ERROR_STOP ile çalışır.
@@ -192,6 +192,16 @@ do $$ begin
   raise exception 'TEST BAŞARISIZ: T11 anonim kullanıcı şantiyeleri okuyabildi';
 exception when insufficient_privilege then
   raise notice 'GEÇTİ: T11 Anonim kullanıcı erişemez';
+end $$;
+reset role;
+
+-- T12: Yetki yardımcıları ve tetikleyici fonksiyonları API'den çağrılamaz
+select pg_temp.login('00000000-0000-0000-0000-00000000000a');
+do $$ begin
+  perform public.is_member(gen_random_uuid());
+  raise exception 'TEST BAŞARISIZ: T12 public.is_member çağrılabildi';
+exception when insufficient_privilege then
+  raise notice 'GEÇTİ: T12 Eski yetki yardımcıları çağrılamaz';
 end $$;
 reset role;
 

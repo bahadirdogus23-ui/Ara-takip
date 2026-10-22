@@ -1,4 +1,4 @@
--- ŞantiyeCep — ilk veritabanı şeması (TASLAK)
+-- Hafriyol — ilk veritabanı şeması (TASLAK)
 -- Hedef: Supabase PostgreSQL. auth.users ve auth.uid() Supabase tarafından sağlanır.
 --
 -- Temel güvenlik ilkesi: her iş tablosunda tenant_id (firma) vardır ve
