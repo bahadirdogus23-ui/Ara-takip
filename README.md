@@ -3,11 +3,51 @@
 Küçük ve orta ölçekli yol, altyapı ve hafriyat firmaları için şantiye imalat, sefer,
 gider ve dönem raporu takip uygulaması.
 
-**Durum:** Planlama aşaması. Veritabanı Supabase'e kuruldu (`hafriyol` projesi, Frankfurt), uygulama kodu henüz yok.
+**Durum:** 1. hafta: giriş/kayıt, firma oluşturma, panel ve şantiye ekranları hazır. Veritabanı Supabase'te (`hafriyol` projesi, Frankfurt).
 
 - Mimari plan, ekranlar, riskler, kabul testleri: [`docs/01-mimari-plan.md`](docs/01-mimari-plan.md)
 - Veritabanı şeması (taslak): [`supabase/migrations/`](supabase/migrations/)
 - Veritabanı testleri: [`supabase/tests/`](supabase/tests/)
+
+## Uygulamayı çalıştırma
+
+Node.js 20 veya üzeri gerekir.
+
+```bash
+npm install
+cp .env.example .env.local   # Supabase adresi ve herkese açık anahtar hazır
+npm run dev                  # http://localhost:3000
+```
+
+Kontroller:
+
+```bash
+npm run lint        # kod kuralları
+npm run typecheck   # TypeScript tip kontrolü
+npm test            # doğrulama ve biçimlendirme testleri
+npm run test:db     # veritabanı güvenlik ve hesap testleri (PostgreSQL gerekir)
+npm run build       # canlıya çıkacak derleme
+```
+
+### Supabase ayarı (bir kez)
+
+Supabase → Authentication → URL Configuration:
+
+- **Site URL:** canlı adres (şimdilik `http://localhost:3000`)
+- **Redirect URLs:** `http://localhost:3000/auth/callback` ve canlı adresin `/auth/callback` yolu
+
+Bu yapılmazsa kayıttan sonra gelen e-posta doğrulama bağlantısı uygulamaya dönmez.
+
+## Klasörler
+
+```
+src/app/(auth)/        giriş, kayıt, çıkış
+src/app/firma-olustur/ ilk firma
+src/app/(app)/         oturum gerektiren sayfalar: panel, şantiyeler
+src/lib/               Supabase bağlantısı, doğrulama kuralları, biçimlendirme
+supabase/              veritabanı şeması ve testleri
+tests/                 birim testleri
+```
 
 ## Veritabanı testlerini çalıştırma
 

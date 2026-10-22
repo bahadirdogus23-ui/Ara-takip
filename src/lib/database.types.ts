@@ -1,0 +1,298 @@
+// Supabase'ten üretildi (generate_typescript_types). Şema değişince yeniden üretin.
+
+export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
+
+type Rel = {
+  foreignKeyName: string;
+  columns: string[];
+  isOneToOne: boolean;
+  referencedRelation: string;
+  referencedColumns: string[];
+};
+
+export type Database = {
+  __InternalSupabase: {
+    PostgrestVersion: "14.18";
+  };
+  public: {
+    Tables: {
+      audit_log: {
+        Row: {
+          action: string;
+          changed_at: string;
+          changed_by: string | null;
+          id: number;
+          new_data: Json | null;
+          old_data: Json | null;
+          record_id: string;
+          table_name: string;
+          tenant_id: string;
+        };
+        Insert: never;
+        Update: never;
+        Relationships: Rel[];
+      };
+      expenses: {
+        Row: {
+          amount: number;
+          category: Database["public"]["Enums"]["expense_category"];
+          client_request_id: string | null;
+          created_at: string;
+          created_by: string;
+          description: string | null;
+          expense_date: string;
+          id: string;
+          site_id: string;
+          supplier: string | null;
+          tenant_id: string;
+          vat_rate: number;
+          work_item_id: string | null;
+        };
+        Insert: {
+          amount: number;
+          category: Database["public"]["Enums"]["expense_category"];
+          client_request_id?: string | null;
+          description?: string | null;
+          expense_date: string;
+          id?: string;
+          site_id: string;
+          supplier?: string | null;
+          tenant_id: string;
+          vat_rate?: number;
+          work_item_id?: string | null;
+        };
+        Update: Partial<Database["public"]["Tables"]["expenses"]["Insert"]>;
+        Relationships: Rel[];
+      };
+      memberships: {
+        Row: {
+          created_at: string;
+          role: Database["public"]["Enums"]["member_role"];
+          tenant_id: string;
+          user_id: string;
+        };
+        Insert: {
+          role?: Database["public"]["Enums"]["member_role"];
+          tenant_id: string;
+          user_id: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["memberships"]["Insert"]>;
+        Relationships: Rel[];
+      };
+      production_entries: {
+        Row: {
+          client_request_id: string | null;
+          created_at: string;
+          created_by: string;
+          entry_date: string;
+          id: string;
+          note: string | null;
+          quantity: number;
+          site_id: string;
+          tenant_id: string;
+          work_item_id: string;
+        };
+        Insert: {
+          client_request_id?: string | null;
+          entry_date: string;
+          id?: string;
+          note?: string | null;
+          quantity: number;
+          site_id: string;
+          tenant_id: string;
+          work_item_id: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["production_entries"]["Insert"]>;
+        Relationships: Rel[];
+      };
+      routes: {
+        Row: {
+          created_at: string;
+          destination: string | null;
+          distance_km: number | null;
+          id: string;
+          name: string;
+          origin: string | null;
+          site_id: string;
+          tenant_id: string;
+        };
+        Insert: {
+          destination?: string | null;
+          distance_km?: number | null;
+          id?: string;
+          name: string;
+          origin?: string | null;
+          site_id: string;
+          tenant_id: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["routes"]["Insert"]>;
+        Relationships: Rel[];
+      };
+      sites: {
+        Row: {
+          code: string | null;
+          created_at: string;
+          employer: string | null;
+          end_date: string | null;
+          id: string;
+          location: string | null;
+          name: string;
+          start_date: string | null;
+          status: string;
+          tenant_id: string;
+        };
+        Insert: {
+          code?: string | null;
+          employer?: string | null;
+          end_date?: string | null;
+          id?: string;
+          location?: string | null;
+          name: string;
+          start_date?: string | null;
+          status?: string;
+          tenant_id: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["sites"]["Insert"]>;
+        Relationships: Rel[];
+      };
+      tenants: {
+        Row: {
+          created_at: string;
+          id: string;
+          name: string;
+          tax_number: string | null;
+        };
+        Insert: {
+          id?: string;
+          name: string;
+          tax_number?: string | null;
+        };
+        Update: Partial<Database["public"]["Tables"]["tenants"]["Insert"]>;
+        Relationships: Rel[];
+      };
+      trip_entries: {
+        Row: {
+          client_request_id: string | null;
+          created_at: string;
+          created_by: string;
+          entry_date: string;
+          id: string;
+          note: string | null;
+          route_id: string | null;
+          site_id: string;
+          tenant_id: string;
+          tonnage: number | null;
+          trip_count: number;
+          vehicle_id: string;
+        };
+        Insert: {
+          client_request_id?: string | null;
+          entry_date: string;
+          id?: string;
+          note?: string | null;
+          route_id?: string | null;
+          site_id: string;
+          tenant_id: string;
+          tonnage?: number | null;
+          trip_count: number;
+          vehicle_id: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["trip_entries"]["Insert"]>;
+        Relationships: Rel[];
+      };
+      vehicles: {
+        Row: {
+          active: boolean;
+          capacity_ton: number | null;
+          created_at: string;
+          id: string;
+          ownership: string;
+          plate: string;
+          tenant_id: string;
+          vehicle_type: string;
+        };
+        Insert: {
+          active?: boolean;
+          capacity_ton?: number | null;
+          id?: string;
+          ownership?: string;
+          plate: string;
+          tenant_id: string;
+          vehicle_type: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["vehicles"]["Insert"]>;
+        Relationships: Rel[];
+      };
+      work_items: {
+        Row: {
+          code: string | null;
+          created_at: string;
+          id: string;
+          name: string;
+          planned_quantity: number | null;
+          site_id: string;
+          tenant_id: string;
+          unit: string;
+          unit_price: number | null;
+        };
+        Insert: {
+          code?: string | null;
+          id?: string;
+          name: string;
+          planned_quantity?: number | null;
+          site_id: string;
+          tenant_id: string;
+          unit: string;
+          unit_price?: number | null;
+        };
+        Update: Partial<Database["public"]["Tables"]["work_items"]["Insert"]>;
+        Relationships: Rel[];
+      };
+    };
+    Views: { [_ in never]: never };
+    Functions: {
+      create_tenant: { Args: { p_name: string }; Returns: string };
+      expense_summary: {
+        Args: { p_from: string; p_site: string; p_to: string };
+        Returns: {
+          amount: number;
+          category: string;
+          entry_count: number;
+          total: number;
+          vat_amount: number;
+        }[];
+      };
+      production_summary: {
+        Args: { p_from: string; p_site: string; p_to: string };
+        Returns: {
+          amount: number;
+          code: string;
+          direct_cost: number;
+          name: string;
+          planned_quantity: number;
+          progress_percent: number;
+          quantity: number;
+          unit: string;
+          unit_cost: number;
+          unit_price: number;
+          work_item_id: string;
+        }[];
+      };
+    };
+    Enums: {
+      expense_category:
+        | "fuel"
+        | "labor"
+        | "material"
+        | "subcontractor"
+        | "equipment_rent"
+        | "maintenance"
+        | "other";
+      member_role: "owner" | "manager" | "field";
+    };
+    CompositeTypes: { [_ in never]: never };
+  };
+};
+
+export type Tables<T extends keyof Database["public"]["Tables"]> = Database["public"]["Tables"][T]["Row"];
+export type MemberRole = Database["public"]["Enums"]["member_role"];

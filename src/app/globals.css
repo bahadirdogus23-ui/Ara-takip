@@ -1,0 +1,58 @@
+@import "tailwindcss";
+
+/* Şantiye: güneş altında okunaklı, yüksek kontrast, büyük dokunma alanları */
+:root {
+  --bg: #f6f5f2;
+  --surface: #ffffff;
+  --text: #1c1a17;
+  --muted: #6b665e;
+  --border: #dcd8cf;
+  --brand: #d97706;
+  --brand-strong: #b45309;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #161513;
+    --surface: #211f1c;
+    --text: #f2efe9;
+    --muted: #a8a196;
+    --border: #3a3631;
+    --brand: #f59e0b;
+    --brand-strong: #fbbf24;
+  }
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-fg: var(--text);
+  --color-muted: var(--muted);
+  --color-line: var(--border);
+  --color-brand: var(--brand);
+  --color-brand-strong: var(--brand-strong);
+  --font-sans: var(--font-inter), system-ui, sans-serif;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+}
+
+@layer components {
+  .card {
+    @apply rounded-xl border border-line bg-surface p-5 shadow-sm;
+  }
+  .input {
+    @apply block min-h-11 w-full rounded-lg border border-line bg-surface px-3 text-base text-fg outline-none focus:border-brand focus:ring-2 focus:ring-brand/30 aria-[invalid=true]:border-red-500;
+  }
+  .btn-primary {
+    @apply inline-flex min-h-11 items-center justify-center rounded-lg bg-brand px-5 font-semibold text-white hover:bg-brand-strong disabled:cursor-wait disabled:opacity-60 dark:text-black;
+  }
+  .btn-secondary {
+    @apply inline-flex min-h-11 items-center justify-center rounded-lg border border-line bg-surface px-4 font-medium hover:bg-bg;
+  }
+  .link {
+    @apply font-medium text-brand-strong underline-offset-2 hover:underline;
+  }
+}
