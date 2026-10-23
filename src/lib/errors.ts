@@ -11,7 +11,7 @@ export function dbErrorMessage(error: DbError): string {
     case "23505":
       return "Bu kayıt zaten var";
     case "23503":
-      return "Bağlı olduğu kayıt bulunamadı veya başka bir kayıt buna bağlı";
+      return "Bu kayıt başka kayıtlarda kullanılıyor ya da bağlı olduğu kayıt bulunamadı";
     case "23514":
       return "Girilen değerlerden biri geçersiz";
     case "PGRST116":

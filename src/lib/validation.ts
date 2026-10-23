@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { decimalPlaces, parseTrNumber } from "@/lib/number";
 
 // Formlardan gelen boş metni null'a çevirir (veritabanında "boş" = null).
 const optionalText = (max: number) =>
@@ -13,6 +14,38 @@ const optionalDate = z
   .trim()
   .refine((v) => v === "" || /^\d{4}-\d{2}-\d{2}$/.test(v), "Geçerli bir tarih girin")
   .transform((v) => (v === "" ? null : v));
+
+const uuid = (message: string) => z.string().trim().pipe(z.uuid(message));
+
+const requiredDate = z
+  .string()
+  .trim()
+  .regex(/^\d{4}-\d{2}-\d{2}$/, "Geçerli bir tarih girin");
+
+type NumberOpts = { label: string; decimals: number; min?: number; minExclusive?: boolean; max: number };
+
+// Türkçe yazılmış sayıyı (ör. "1.234,5") doğrular ve sayıya çevirir.
+// optional: boş giriş hata değil, null döner.
+function trNumberField({ label, decimals, min = 0, minExclusive = false, max }: NumberOpts, optional: boolean) {
+  return z.string().transform((raw, ctx): number | null => {
+    if (optional && raw.trim() === "") return null;
+    const n = parseTrNumber(raw);
+    const fail = (message: string) => {
+      ctx.addIssue({ code: "custom", message });
+      return z.NEVER;
+    };
+    if (n === null) return fail(raw.trim() === "" ? `${label} girin` : `${label} için geçerli bir sayı girin`);
+    if (minExclusive ? n <= min : n < min) return fail(minExclusive ? `${label} ${min}'dan büyük olmalı` : `${label} negatif olamaz`);
+    if (n > max) return fail(`${label} çok büyük`);
+    if (decimalPlaces(n) > decimals) {
+      return fail(decimals === 0 ? `${label} tam sayı olmalı` : `${label} en fazla ${decimals} ondalık basamak olabilir`);
+    }
+    return n;
+  });
+}
+
+const trNumber = (opts: NumberOpts) => trNumberField(opts, false).pipe(z.number());
+const optionalTrNumber = (opts: NumberOpts) => trNumberField(opts, true);
 
 export const signInSchema = z.object({
   email: z.string().trim().toLowerCase().pipe(z.email("Geçerli bir e-posta adresi girin")),
@@ -49,12 +82,114 @@ export const siteSchema = z
     message: "Bitiş tarihi başlangıçtan önce olamaz",
   });
 
+export const UNITS = {
+  m: "m",
+  m2: "m²",
+  m3: "m³",
+  ton: "ton",
+  kg: "kg",
+  adet: "adet",
+  lt: "lt",
+  km: "km",
+  saat: "saat",
+  gun: "gün",
+  sefer: "sefer",
+} as const;
+
+export const workItemSchema = z.object({
+  code: optionalText(50),
+  name: z.string().trim().min(2, "İş kalemi adı en az 2 karakter olmalı").max(300, "İş kalemi adı çok uzun"),
+  unit: z.enum(Object.keys(UNITS) as [keyof typeof UNITS], "Birim seçin"),
+  unit_price: optionalTrNumber({ label: "Birim fiyat", decimals: 2, max: 999_999_999_999 }),
+  planned_quantity: optionalTrNumber({ label: "Planlanan miktar", decimals: 3, max: 9_999_999_999_999 }),
+});
+
+export const routeSchema = z.object({
+  name: z.string().trim().min(2, "Güzergâh adı en az 2 karakter olmalı").max(200, "Güzergâh adı çok uzun"),
+  origin: optionalText(200),
+  destination: optionalText(200),
+  distance_km: optionalTrNumber({ label: "Mesafe", decimals: 2, max: 999_999 }),
+});
+
+export const VEHICLE_OWNERSHIP = {
+  own: "Öz mal",
+  rented: "Kiralık",
+  subcontractor: "Taşeron",
+} as const;
+
+// "06abc123" / "06 ABC 123" → "06 ABC 123"
+export function normalizePlate(raw: string): string {
+  const s = raw.toLocaleUpperCase("tr-TR").replace(/[^0-9A-ZÇĞİÖŞÜ]/g, "");
+  const m = /^(\d{2})([A-ZÇĞİÖŞÜ]{1,3})(\d{2,5})$/.exec(s);
+  return m ? `${m[1]} ${m[2]} ${m[3]}` : raw.trim().toLocaleUpperCase("tr-TR").replace(/\s+/g, " ");
+}
+
+export const vehicleSchema = z.object({
+  plate: z
+    .string()
+    .trim()
+    .min(2, "Plaka / makine no girin")
+    .max(20, "Plaka çok uzun")
+    .transform(normalizePlate),
+  vehicle_type: z.string().trim().min(2, "Araç türünü girin").max(100, "Araç türü çok uzun"),
+  ownership: z.enum(["own", "rented", "subcontractor"], "Mülkiyet seçin"),
+  capacity_ton: optionalTrNumber({ label: "Kapasite", decimals: 2, min: 0, minExclusive: true, max: 999_999 }),
+  active: z.string().optional().transform((v) => v === "on" || v === "true"),
+});
+
+export const productionSchema = z.object({
+  site_id: uuid("Şantiye seçin"),
+  work_item_id: uuid("İş kalemi seçin"),
+  entry_date: requiredDate,
+  quantity: trNumber({ label: "Miktar", decimals: 3, min: 0, minExclusive: true, max: 9_999_999_999_999 }),
+  note: optionalText(500),
+  client_request_id: uuid("Form süresi doldu, sayfayı yenileyin"),
+});
+
+export const tripSchema = z.object({
+  site_id: uuid("Şantiye seçin"),
+  vehicle_id: uuid("Araç seçin"),
+  route_id: z.union([z.literal("").transform(() => null), uuid("Güzergâh seçin")]),
+  entry_date: requiredDate,
+  trip_count: trNumber({ label: "Sefer sayısı", decimals: 0, min: 0, minExclusive: true, max: 500 }),
+  tonnage: optionalTrNumber({ label: "Tonaj", decimals: 3, max: 999_999_999 }),
+  note: optionalText(500),
+  client_request_id: uuid("Form süresi doldu, sayfayı yenileyin"),
+});
+
+export const EXPENSE_CATEGORIES = {
+  fuel: "Mazot / yakıt",
+  labor: "İşçilik",
+  material: "Malzeme",
+  subcontractor: "Taşeron",
+  equipment_rent: "Makine kirası",
+  maintenance: "Bakım / onarım",
+  other: "Diğer",
+} as const;
+
+export const VAT_RATES = ["0", "1", "10", "20"] as const;
+
+export const expenseSchema = z.object({
+  site_id: uuid("Şantiye seçin"),
+  work_item_id: z.union([z.literal("").transform(() => null), uuid("İş kalemi seçin")]),
+  expense_date: requiredDate,
+  category: z.enum(Object.keys(EXPENSE_CATEGORIES) as [keyof typeof EXPENSE_CATEGORIES], "Gider türü seçin"),
+  amount: trNumber({ label: "Tutar", decimals: 2, min: 0, minExclusive: true, max: 999_999_999_999 }),
+  vat_rate: z.enum(VAT_RATES, "KDV oranı seçin").transform(Number),
+  supplier: optionalText(200),
+  description: optionalText(500),
+  client_request_id: uuid("Form süresi doldu, sayfayı yenileyin"),
+});
+
 export type FieldErrors = Record<string, string>;
 
 export type FormState = {
   error?: string;
   fieldErrors?: FieldErrors;
   values?: Record<string, string>;
+  // Başarılı kayıttan sonra formu sıfırlamak için değişen anahtar
+  ok?: string;
+  message?: string;
 } | null;
 
 // FormData → düz nesne (yalnızca metin alanları)

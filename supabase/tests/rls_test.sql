@@ -205,4 +205,35 @@ exception when insufficient_privilege then
 end $$;
 reset role;
 
+-- T13: Saha personeli başkasının kaydını silemez/değiştiremez, kendi kaydını silebilir
+select pg_temp.login('00000000-0000-0000-0000-00000000000a');
+insert into public.production_entries(tenant_id, site_id, work_item_id, entry_date, quantity, note)
+  values (:'tenant_a', :'site_a', :'item_a', '2026-10-05', 7, 'sahibin kaydı');
+reset role;
+select pg_temp.login('00000000-0000-0000-0000-0000000000a2');
+delete from public.production_entries where note = 'sahibin kaydı';
+update public.production_entries set quantity = 9999 where note = 'sahibin kaydı';
+reset role;
+select pg_temp.check((select quantity from public.production_entries where note = 'sahibin kaydı') = 7,
+  'T13a Saha personeli başkasının kaydını silemez/değiştiremez');
+select pg_temp.login('00000000-0000-0000-0000-0000000000a2');
+delete from public.production_entries where entry_date = '2026-11-15';
+reset role;
+select pg_temp.check(not exists (select 1 from public.production_entries where entry_date = '2026-11-15'),
+  'T13b Saha personeli kendi kaydını silebilir');
+
+-- T14: Araç plakası firma içinde tekil, farklı firmada aynı plaka olabilir
+select pg_temp.login('00000000-0000-0000-0000-00000000000b');
+insert into public.vehicles(tenant_id, plate, vehicle_type) values (:'tenant_b', '06 ABC 123', 'kamyon');
+reset role;
+select pg_temp.login('00000000-0000-0000-0000-00000000000a');
+do $$ begin
+  insert into public.vehicles(tenant_id, plate, vehicle_type)
+    select id, '06 ABC 123', 'kamyon' from public.tenants limit 1;
+  raise exception 'TEST BAŞARISIZ: T14 aynı firmada aynı plaka eklenebildi';
+exception when unique_violation then
+  raise notice 'GEÇTİ: T14 Plaka firma içinde tekil, firmalar arasında bağımsız';
+end $$;
+reset role;
+
 \echo 'TÜM VERİTABANI TESTLERİ GEÇTİ'

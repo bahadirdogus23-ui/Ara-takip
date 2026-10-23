@@ -3,7 +3,7 @@
 Küçük ve orta ölçekli yol, altyapı ve hafriyat firmaları için şantiye imalat, sefer,
 gider ve dönem raporu takip uygulaması.
 
-**Durum:** 1. hafta: giriş/kayıt, firma oluşturma, panel ve şantiye ekranları hazır. Veritabanı Supabase'te (`hafriyol` projesi, Frankfurt).
+**Durum:** 2. hafta: iş kalemleri, araçlar, güzergâhlar, günlük imalat/sefer girişi, kayıt listeleri ve giderler hazır. Veritabanı Supabase'te (`hafriyol` projesi, Frankfurt).
 
 - Mimari plan, ekranlar, riskler, kabul testleri: [`docs/01-mimari-plan.md`](docs/01-mimari-plan.md)
 - Veritabanı şeması (taslak): [`supabase/migrations/`](supabase/migrations/)
@@ -43,8 +43,10 @@ Bu yapılmazsa kayıttan sonra gelen e-posta doğrulama bağlantısı uygulamaya
 ```
 src/app/(auth)/        giriş, kayıt, çıkış
 src/app/firma-olustur/ ilk firma
-src/app/(app)/         oturum gerektiren sayfalar: panel, şantiyeler
-src/lib/               Supabase bağlantısı, doğrulama kuralları, biçimlendirme
+src/app/(app)/         oturum gerektiren sayfalar: panel, günlük giriş, kayıtlar,
+                       giderler, şantiyeler (iş kalemi, güzergâh), araçlar
+src/lib/               Supabase bağlantısı, doğrulama kuralları, Türkçe sayı,
+                       kuruş hesabı, biçimlendirme
 supabase/              veritabanı şeması ve testleri
 tests/                 birim testleri
 ```

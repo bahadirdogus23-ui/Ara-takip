@@ -5,14 +5,19 @@ import { usePathname } from "next/navigation";
 
 const LINKS = [
   { href: "/panel", label: "Panel" },
+  { href: "/gunluk", label: "Günlük giriş" },
+  { href: "/kayitlar", label: "Kayıtlar" },
+  { href: "/giderler", label: "Giderler", managerOnly: true },
   { href: "/santiyeler", label: "Şantiyeler" },
+  { href: "/araclar", label: "Araçlar" },
 ];
 
-export function NavLinks() {
+// Saha personeli giderleri görmez (sayfa ve veritabanı da ayrıca engeller)
+export function NavLinks({ manager }: { manager: boolean }) {
   const path = usePathname();
   return (
     <nav className="mx-auto flex max-w-5xl gap-1 overflow-x-auto px-2">
-      {LINKS.map((l) => {
+      {LINKS.filter((l) => manager || !l.managerOnly).map((l) => {
         const active = path === l.href || path.startsWith(`${l.href}/`);
         return (
           <Link

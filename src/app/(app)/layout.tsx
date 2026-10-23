@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { signOut } from "@/app/(auth)/actions";
-import { ROLE_LABELS, getContext } from "@/lib/context";
+import { ROLE_LABELS, canManage, getContext } from "@/lib/context";
 import { NavLinks } from "./nav-links";
 import { TenantSwitcher } from "./tenant-switcher";
 
@@ -28,7 +28,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
             <button className="btn-secondary min-h-9 px-3 text-sm">Çıkış</button>
           </form>
         </div>
-        <NavLinks />
+        <NavLinks manager={canManage(tenant.role)} />
       </header>
       <main className="mx-auto max-w-5xl px-4 py-6">{children}</main>
     </div>

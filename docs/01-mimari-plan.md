@@ -162,6 +162,8 @@ gerekir.
 | T10 | Kayıtlar işlem geçmişine yazılır, kullanıcı geçmişi silemez | ✅ |
 | T11 | Oturum açmamış kullanıcı hiçbir tabloyu okuyamaz | ✅ |
 | T12 | Eski yetki yardımcıları API'den çağrılamaz | ✅ |
+| T13 | Saha personeli başkasının kaydını silemez/değiştiremez, kendi kaydını silebilir | ✅ |
+| T14 | Araç plakası firma içinde tekil | ✅ |
 
 ### Uygulama (sonraki görevlerde yazılacak, Playwright ile)
 
