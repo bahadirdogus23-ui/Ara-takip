@@ -23,7 +23,10 @@ export default async function ReportPage({
   }
 
   const params = await searchParams;
-  const filters = readFilters(params, sites.map((s) => s.id));
+  const filters = readFilters(
+    params,
+    sites.map((s) => s.id),
+  );
   const siteId = filters.siteId || (sites.find((s) => s.status === "active") ?? sites[0]).id;
   const { from, to } = filters;
 
@@ -73,48 +76,79 @@ export default async function ReportPage({
         {items.length === 0 ? (
           <p className="card text-sm text-muted">Bu şantiyede iş kalemi yok.</p>
         ) : (
-          <div className="overflow-x-auto rounded-xl border border-line bg-surface">
-            <table className="w-full min-w-[44rem] text-sm">
-              <thead className="bg-bg text-left text-xs uppercase tracking-wide text-muted">
-                <tr>
-                  <th className="px-3 py-2">Poz / iş kalemi</th>
-                  <th className="px-3 py-2 text-right">Miktar</th>
-                  <th className="px-3 py-2 text-right">Birim fiyat</th>
-                  <th className="px-3 py-2 text-right">Tutar</th>
-                  <th className="px-3 py-2 text-right">Gerçekleşme</th>
-                  <th className="px-3 py-2 text-right">Birim maliyet</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-line tabular-nums">
-                {items.map((i, idx) => (
-                  <tr key={idx}>
-                    <td className="px-3 py-2">
-                      {i.code && <span className="mr-2 text-muted">{i.code}</span>}
-                      {i.name}
-                    </td>
-                    <td className="px-3 py-2 text-right whitespace-nowrap">
-                      {formatTrNumber(i.quantity)} {unitLabel(i.unit)}
-                    </td>
-                    <td className="px-3 py-2 text-right whitespace-nowrap">{i.unitPrice === null ? "—" : formatTL(i.unitPrice)}</td>
-                    <td className="px-3 py-2 text-right font-semibold whitespace-nowrap">{formatTL(i.amount)}</td>
-                    <td className="px-3 py-2 text-right whitespace-nowrap">
-                      {i.progressPercent === null ? "—" : `%${formatTrNumber(i.progressPercent, 2)}`}
-                    </td>
-                    <td className="px-3 py-2 text-right whitespace-nowrap">{i.unitCost === null ? "—" : formatTL(i.unitCost)}</td>
+          <>
+            {/* Telefonda kart listesi: tablo dar ekrana sığmaz */}
+            <ul className="divide-y divide-line overflow-hidden rounded-xl border border-line bg-surface sm:hidden">
+              {items.map((i, idx) => (
+                <li key={idx} className="space-y-1 px-4 py-3 text-sm">
+                  <p className="font-medium">
+                    {i.code && <span className="mr-2 text-muted">{i.code}</span>}
+                    {i.name}
+                  </p>
+                  <div className="flex justify-between gap-3 tabular-nums">
+                    <span>
+                      {formatTrNumber(i.quantity)} {unitLabel(i.unit)} × {i.unitPrice === null ? "—" : formatTL(i.unitPrice)}
+                    </span>
+                    <span className="font-semibold">{formatTL(i.amount)}</span>
+                  </div>
+                  <p className="text-xs text-muted">
+                    Gerçekleşme: {i.progressPercent === null ? "—" : `%${formatTrNumber(i.progressPercent, 2)}`} · Birim maliyet:{" "}
+                    {i.unitCost === null ? "—" : formatTL(i.unitCost)}
+                  </p>
+                </li>
+              ))}
+              <li className="flex justify-between px-4 py-3 text-sm font-semibold">
+                <span>Toplam</span>
+                <span className="tabular-nums">{formatTL(totals.amount)}</span>
+              </li>
+            </ul>
+            <div className="hidden overflow-x-auto rounded-xl border border-line bg-surface sm:block">
+              <table className="w-full min-w-[44rem] text-sm">
+                <thead className="bg-bg text-left text-xs uppercase tracking-wide text-muted">
+                  <tr>
+                    <th className="px-3 py-2">Poz / iş kalemi</th>
+                    <th className="px-3 py-2 text-right">Miktar</th>
+                    <th className="px-3 py-2 text-right">Birim fiyat</th>
+                    <th className="px-3 py-2 text-right">Tutar</th>
+                    <th className="px-3 py-2 text-right">Gerçekleşme</th>
+                    <th className="px-3 py-2 text-right">Birim maliyet</th>
                   </tr>
-                ))}
-              </tbody>
-              <tfoot className="border-t-2 border-line font-semibold">
-                <tr>
-                  <td className="px-3 py-2" colSpan={3}>
-                    Toplam
-                  </td>
-                  <td className="px-3 py-2 text-right tabular-nums">{formatTL(totals.amount)}</td>
-                  <td colSpan={2} />
-                </tr>
-              </tfoot>
-            </table>
-          </div>
+                </thead>
+                <tbody className="divide-y divide-line tabular-nums">
+                  {items.map((i, idx) => (
+                    <tr key={idx}>
+                      <td className="px-3 py-2">
+                        {i.code && <span className="mr-2 text-muted">{i.code}</span>}
+                        {i.name}
+                      </td>
+                      <td className="px-3 py-2 text-right whitespace-nowrap">
+                        {formatTrNumber(i.quantity)} {unitLabel(i.unit)}
+                      </td>
+                      <td className="px-3 py-2 text-right whitespace-nowrap">
+                        {i.unitPrice === null ? "—" : formatTL(i.unitPrice)}
+                      </td>
+                      <td className="px-3 py-2 text-right font-semibold whitespace-nowrap">{formatTL(i.amount)}</td>
+                      <td className="px-3 py-2 text-right whitespace-nowrap">
+                        {i.progressPercent === null ? "—" : `%${formatTrNumber(i.progressPercent, 2)}`}
+                      </td>
+                      <td className="px-3 py-2 text-right whitespace-nowrap">
+                        {i.unitCost === null ? "—" : formatTL(i.unitCost)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+                <tfoot className="border-t-2 border-line font-semibold">
+                  <tr>
+                    <td className="px-3 py-2" colSpan={3}>
+                      Toplam
+                    </td>
+                    <td className="px-3 py-2 text-right tabular-nums">{formatTL(totals.amount)}</td>
+                    <td colSpan={2} />
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+          </>
         )}
         <p className="text-xs text-muted">
           Gerçekleşme = dönem miktarı ÷ planlanan miktar. Birim maliyet = iş kalemine bağlanmış gider ÷ dönem miktarı.

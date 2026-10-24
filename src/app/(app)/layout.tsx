@@ -28,7 +28,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
             <button className="btn-secondary min-h-9 px-3 text-sm">Çıkış</button>
           </form>
         </div>
-        <NavLinks manager={canManage(tenant.role)} />
+        <NavLinks manager={canManage(tenant.role)} owner={tenant.role === "owner"} />
       </header>
       <main className="mx-auto max-w-5xl px-4 py-6">{children}</main>
     </div>

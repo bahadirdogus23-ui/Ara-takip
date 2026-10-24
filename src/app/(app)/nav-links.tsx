@@ -11,14 +11,15 @@ const LINKS = [
   { href: "/rapor", label: "Rapor", managerOnly: true },
   { href: "/santiyeler", label: "Şantiyeler" },
   { href: "/araclar", label: "Araçlar" },
+  { href: "/kullanicilar", label: "Kullanıcılar", ownerOnly: true },
 ];
 
 // Saha personeli giderleri görmez (sayfa ve veritabanı da ayrıca engeller)
-export function NavLinks({ manager }: { manager: boolean }) {
+export function NavLinks({ manager, owner }: { manager: boolean; owner: boolean }) {
   const path = usePathname();
   return (
     <nav className="mx-auto flex max-w-5xl gap-1 overflow-x-auto px-2">
-      {LINKS.filter((l) => manager || !l.managerOnly).map((l) => {
+      {LINKS.filter((l) => (manager || !l.managerOnly) && (owner || !l.ownerOnly)).map((l) => {
         const active = path === l.href || path.startsWith(`${l.href}/`);
         return (
           <Link

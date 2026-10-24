@@ -252,6 +252,14 @@ export type Database = {
     Views: { [_ in never]: never };
     Functions: {
       create_tenant: { Args: { p_name: string }; Returns: string };
+      add_member: {
+        Args: { p_tenant: string; p_email: string; p_role: Database["public"]["Enums"]["member_role"] };
+        Returns: undefined;
+      };
+      tenant_members: {
+        Args: { p_tenant: string };
+        Returns: { user_id: string; email: string; role: Database["public"]["Enums"]["member_role"]; created_at: string }[];
+      };
       expense_summary: {
         Args: { p_from: string; p_site: string; p_to: string };
         Returns: {

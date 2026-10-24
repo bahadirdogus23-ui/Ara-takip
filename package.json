@@ -9,7 +9,8 @@
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "test:db": "./scripts/test-db.sh"
+    "test:db": "./scripts/test-db.sh",
+    "test:e2e": "playwright test"
   },
   "dependencies": {
     "@react-pdf/renderer": "^4.9.0",
@@ -23,6 +24,7 @@
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",
+    "@playwright/test": "1.56",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^22.20.5",
     "@types/react": "^19",

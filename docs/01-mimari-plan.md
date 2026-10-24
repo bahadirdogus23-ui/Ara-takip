@@ -164,21 +164,22 @@ gerekir.
 | T12 | Eski yetki yardımcıları API'den çağrılamaz | ✅ |
 | T13 | Saha personeli başkasının kaydını silemez/değiştiremez, kendi kaydını silebilir | ✅ |
 | T14 | Araç plakası firma içinde tekil | ✅ |
+| T15 | Firma sahibi e-postayla kullanıcı ekler; kayıtsız e-posta, son sahibin çıkarılması, başka firmanın üye listesi ve saha personelinin kullanıcı eklemesi engellenir | ✅ |
 
-### Uygulama (sonraki görevlerde yazılacak, Playwright ile)
+### Uygulama (otomatik, Playwright: `./scripts/e2e-stack.sh && npm run test:e2e`)
 
-- [ ] **K1.** Yeni kullanıcı kayıt olur, firma oluşturur, ana panele düşer.
-- [ ] **K2.** Owner bir şantiye, iki iş kalemi ve bir araç tanımlar.
-- [ ] **K3.** Telefon ekran boyutunda (390 px) günlük imalat kaydı 30 saniyeden kısa
+- [x] **K1.** Yeni kullanıcı kayıt olur, firma oluşturur, ana panele düşer.
+- [x] **K2.** Owner bir şantiye, iki iş kalemi ve bir araç tanımlar.
+- [x] **K3.** Telefon ekran boyutunda (390 px) günlük imalat kaydı 30 saniyeden kısa
       sürede girilir. Yatay kaydırma olmaz.
-- [ ] **K4.** Boş veya hatalı form gönderilince alan altında Türkçe hata mesajı çıkar.
+- [x] **K4.** Boş veya hatalı form gönderilince alan altında Türkçe hata mesajı çıkar.
       Kayıt oluşmaz.
-- [ ] **K5.** Kayıt düğmesine hızlıca iki kez basılınca tek kayıt oluşur.
-- [ ] **K6.** Saha kullanıcısı menüde "Giderler"i görmez. URL'yi elle yazınca da
+- [x] **K5.** Kayıt düğmesine hızlıca iki kez basılınca tek kayıt oluşur.
+- [x] **K6.** Saha kullanıcısı menüde "Giderler"i görmez. URL'yi elle yazınca da
       erişemez.
-- [ ] **K7.** Dönem raporundaki toplamlar T9'daki örnek veriyle birebir aynıdır.
+- [x] **K7.** Dönem raporundaki toplamlar T9'daki örnek veriyle birebir aynıdır.
       Excel dosyası açılır ve aynı toplamları içerir.
-- [ ] **K8.** İki farklı tarayıcıda iki farklı firma ile girilince birbirlerinin
+- [x] **K8.** İki farklı tarayıcıda iki farklı firma ile girilince birbirlerinin
       verisi hiçbir ekranda görünmez.
 
 ## 9. Geliştirme sırası (4 haftalık plana uyarlanmış)
@@ -223,6 +224,7 @@ bağımsız bir üründür. Kurum verisi kullanılmaz.
 ## 12. Karar bekleyen konular
 
 1. **Pilot firma.** Hafta 4 için en az bir gönüllü firma gerekiyor.
+3. **Canlıya alma.** Uygulamanın internetten açılabilmesi için yayın (ör. Vercel) gerekiyor.
 2. **Eski yetki fonksiyonlarının silinmesi.** `public.is_member` ve `public.has_role`
    artık kullanılmıyor ve çağrılamıyor. Silmek için Supabase'te onay gerekiyor;
    zararsız oldukları için bir sonraki migration'a bırakıldı.

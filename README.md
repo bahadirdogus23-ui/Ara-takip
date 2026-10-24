@@ -3,7 +3,7 @@
 Küçük ve orta ölçekli yol, altyapı ve hafriyat firmaları için şantiye imalat, sefer,
 gider ve dönem raporu takip uygulaması.
 
-**Durum:** 3. hafta: dönem raporu ile Excel ve PDF çıktısı hazır (önceki haftalar: giriş, firma, şantiye, iş kalemi, araç, günlük giriş, kayıtlar, giderler). Veritabanı Supabase'te (`hafriyol` projesi, Frankfurt).
+**Durum:** 4. hafta: kullanıcı yönetimi eklendi, kabul testleri (K1–K8) tarayıcıda otomatik çalışıyor. Sırada canlıya alma ve pilot kullanıcı var. Veritabanı Supabase'te (`hafriyol` projesi, Frankfurt).
 
 - Mimari plan, ekranlar, riskler, kabul testleri: [`docs/01-mimari-plan.md`](docs/01-mimari-plan.md)
 - Veritabanı şeması (taslak): [`supabase/migrations/`](supabase/migrations/)
@@ -51,6 +51,19 @@ assets/fonts/          PDF'e gömülen Noto Sans (SIL Open Font License, OFL.txt
 supabase/              veritabanı şeması ve testleri
 tests/                 birim testleri
 ```
+
+## Uçtan uca (tarayıcı) testleri
+
+Supabase'in yerel bir kopyası (PostgreSQL + Supabase Auth + PostgREST) Docker olmadan başlatılır,
+uygulama ona bağlanır ve kabul testleri telefon ekran boyutunda çalışır:
+
+```bash
+./scripts/e2e-stack.sh        # ilk seferde Auth ve PostgREST ikili dosyalarını indirir
+npm run test:e2e              # K1–K8 kabul testleri
+./scripts/e2e-stack.sh stop
+```
+
+Gerçek Supabase projesine hiç dokunmaz.
 
 ## Veritabanı testlerini çalıştırma
 

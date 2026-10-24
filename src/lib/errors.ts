@@ -16,6 +16,8 @@ export function dbErrorMessage(error: DbError): string {
       return "Girilen değerlerden biri geçersiz";
     case "PGRST116":
       return "Kayıt bulunamadı";
+    case "P0001": // veritabanı fonksiyonlarımızın Türkçe iş kuralı mesajları
+      return error.message ?? "İşlem yapılamadı";
   }
   console.error("Veritabanı hatası:", error);
   return "İşlem kaydedilemedi, lütfen tekrar deneyin";

@@ -236,4 +236,35 @@ exception when unique_violation then
 end $$;
 reset role;
 
+-- T15: Firma kullanıcıları
+insert into auth.users(id, email) values ('00000000-0000-0000-0000-0000000000a3', 'Yeni.Sef@Test');
+select pg_temp.login('00000000-0000-0000-0000-00000000000a');
+select public.add_member(:'tenant_a', '  yeni.sef@test ', 'manager');
+select pg_temp.check((select count(*) from public.tenant_members(:'tenant_a')) = 3, 'T15a Sahip e-postayla kullanıcı ekler, üyeleri listeler');
+do $$ begin
+  perform public.add_member((select id from public.tenants where name = 'A Hafriyat Ltd'), 'yok@test', 'field');
+  raise exception 'TEST BAŞARISIZ: T15b kayıtsız e-posta eklendi';
+exception when raise_exception then
+  raise notice 'GEÇTİ: T15b Kayıtsız e-posta için anlaşılır hata';
+end $$;
+do $$ begin
+  delete from public.memberships where user_id = '00000000-0000-0000-0000-00000000000a';
+  raise exception 'TEST BAŞARISIZ: T15c son sahip çıkarıldı';
+exception when raise_exception then
+  raise notice 'GEÇTİ: T15c Son sahip çıkarılamaz';
+end $$;
+reset role;
+
+select pg_temp.login('00000000-0000-0000-0000-00000000000b');
+select pg_temp.check((select count(*) from public.tenant_members(:'tenant_a')) = 0, 'T15d Başka firmanın üyeleri listelenemez');
+reset role;
+select pg_temp.login('00000000-0000-0000-0000-0000000000a2');
+do $$ begin
+  perform public.add_member((select id from public.tenants limit 1), 'sahip-b@test', 'owner');
+  raise exception 'TEST BAŞARISIZ: T15e saha personeli kullanıcı ekledi';
+exception when insufficient_privilege then
+  raise notice 'GEÇTİ: T15e Saha personeli kullanıcı ekleyemez';
+end $$;
+reset role;
+
 \echo 'TÜM VERİTABANI TESTLERİ GEÇTİ'

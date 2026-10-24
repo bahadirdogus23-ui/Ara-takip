@@ -55,9 +55,9 @@ export default async function ExpensesPage({
       <h1 className="text-2xl font-bold">Giderler</h1>
 
       {activeSites.length > 0 && (
-        <details className="card" open={rows.length === 0}>
-          <summary className="cursor-pointer font-semibold">Yeni gider</summary>
-          <div className="mt-4">
+        <section className="card">
+          <h2 className="mb-3 font-semibold">Yeni gider</h2>
+          <div>
             <ExpenseForm
               sites={activeSites.map((s) => ({ value: s.id, label: s.name }))}
               items={(items ?? [])
@@ -68,7 +68,7 @@ export default async function ExpensesPage({
               requestId={randomUUID()}
             />
           </div>
-        </details>
+        </section>
       )}
 
       <FilterBar sites={sites ?? []} siteId={siteId} from={from} to={to} />

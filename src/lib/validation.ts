@@ -181,6 +181,11 @@ export const expenseSchema = z.object({
   client_request_id: uuid("Form süresi doldu, sayfayı yenileyin"),
 });
 
+export const memberSchema = z.object({
+  email: z.string().trim().toLowerCase().pipe(z.email("Geçerli bir e-posta adresi girin")),
+  role: z.enum(["owner", "manager", "field"], "Rol seçin"),
+});
+
 export type FieldErrors = Record<string, string>;
 
 export type FormState = {
