@@ -8,6 +8,7 @@ const LINKS = [
   { href: "/gunluk", label: "Günlük giriş" },
   { href: "/kayitlar", label: "Kayıtlar" },
   { href: "/giderler", label: "Giderler", managerOnly: true },
+  { href: "/rapor", label: "Rapor", managerOnly: true },
   { href: "/santiyeler", label: "Şantiyeler" },
   { href: "/araclar", label: "Araçlar" },
 ];

@@ -3,7 +3,7 @@
 Küçük ve orta ölçekli yol, altyapı ve hafriyat firmaları için şantiye imalat, sefer,
 gider ve dönem raporu takip uygulaması.
 
-**Durum:** 2. hafta: iş kalemleri, araçlar, güzergâhlar, günlük imalat/sefer girişi, kayıt listeleri ve giderler hazır. Veritabanı Supabase'te (`hafriyol` projesi, Frankfurt).
+**Durum:** 3. hafta: dönem raporu ile Excel ve PDF çıktısı hazır (önceki haftalar: giriş, firma, şantiye, iş kalemi, araç, günlük giriş, kayıtlar, giderler). Veritabanı Supabase'te (`hafriyol` projesi, Frankfurt).
 
 - Mimari plan, ekranlar, riskler, kabul testleri: [`docs/01-mimari-plan.md`](docs/01-mimari-plan.md)
 - Veritabanı şeması (taslak): [`supabase/migrations/`](supabase/migrations/)
@@ -24,7 +24,7 @@ Kontroller:
 ```bash
 npm run lint        # kod kuralları
 npm run typecheck   # TypeScript tip kontrolü
-npm test            # doğrulama ve biçimlendirme testleri
+npm test            # doğrulama, hesap, Excel ve PDF testleri (PDF testi pdftotext ister)
 npm run test:db     # veritabanı güvenlik ve hesap testleri (PostgreSQL gerekir)
 npm run build       # canlıya çıkacak derleme
 ```
@@ -44,9 +44,10 @@ Bu yapılmazsa kayıttan sonra gelen e-posta doğrulama bağlantısı uygulamaya
 src/app/(auth)/        giriş, kayıt, çıkış
 src/app/firma-olustur/ ilk firma
 src/app/(app)/         oturum gerektiren sayfalar: panel, günlük giriş, kayıtlar,
-                       giderler, şantiyeler (iş kalemi, güzergâh), araçlar
+                       giderler, rapor (Excel/PDF), şantiyeler (iş kalemi, güzergâh), araçlar
 src/lib/               Supabase bağlantısı, doğrulama kuralları, Türkçe sayı,
                        kuruş hesabı, biçimlendirme
+assets/fonts/          PDF'e gömülen Noto Sans (SIL Open Font License, OFL.txt)
 supabase/              veritabanı şeması ve testleri
 tests/                 birim testleri
 ```

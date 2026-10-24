@@ -6,12 +6,14 @@ export function FilterBar({
   from,
   to,
   hidden,
+  allowAll = true,
 }: {
   sites: { id: string; name: string }[];
   siteId: string;
   from: string;
   to: string;
   hidden?: Record<string, string>;
+  allowAll?: boolean;
 }) {
   return (
     <form method="get" className="card grid grid-cols-2 gap-3 sm:grid-cols-[2fr_1fr_1fr_auto] sm:items-end">
@@ -21,7 +23,7 @@ export function FilterBar({
           Şantiye
         </label>
         <select id="f-santiye" name="santiye" defaultValue={siteId} className="input">
-          <option value="">Tüm şantiyeler</option>
+          {allowAll && <option value="">Tüm şantiyeler</option>}
           {sites.map((s) => (
             <option key={s.id} value={s.id}>
               {s.name}
