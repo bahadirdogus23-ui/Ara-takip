@@ -224,7 +224,7 @@ bağımsız bir üründür. Kurum verisi kullanılmaz.
 ## 12. Karar bekleyen konular
 
 1. **Pilot firma.** Hafta 4 için en az bir gönüllü firma gerekiyor.
-3. **Canlıya alma.** Uygulamanın internetten açılabilmesi için yayın (ör. Vercel) gerekiyor.
 2. **Eski yetki fonksiyonlarının silinmesi.** `public.is_member` ve `public.has_role`
    artık kullanılmıyor ve çağrılamıyor. Silmek için Supabase'te onay gerekiyor;
    zararsız oldukları için bir sonraki migration'a bırakıldı.
+3. **Canlıya alma.** Uygulamanın internetten açılabilmesi için yayın (ör. Vercel) gerekiyor.
