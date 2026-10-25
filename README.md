@@ -3,7 +3,9 @@
 Küçük ve orta ölçekli yol, altyapı ve hafriyat firmaları için şantiye imalat, sefer,
 gider ve dönem raporu takip uygulaması.
 
-**Durum:** 4. hafta: kullanıcı yönetimi eklendi, kabul testleri (K1–K8) tarayıcıda otomatik çalışıyor. Sırada canlıya alma ve pilot kullanıcı var. Veritabanı Supabase'te (`hafriyol` projesi, Frankfurt).
+**Canlı adres:** https://hafriyol.vercel.app (Vercel, Frankfurt). Bu dala yapılan her gönderim otomatik yayınlanır.
+
+**Durum:** 4. hafta: kullanıcı yönetimi eklendi, kabul testleri (K1–K8) tarayıcıda otomatik çalışıyor, uygulama yayında. Sırada pilot kullanıcı var. Veritabanı Supabase'te (`hafriyol` projesi, Frankfurt).
 
 - Mimari plan, ekranlar, riskler, kabul testleri: [`docs/01-mimari-plan.md`](docs/01-mimari-plan.md)
 - Veritabanı şeması (taslak): [`supabase/migrations/`](supabase/migrations/)
@@ -33,8 +35,8 @@ npm run build       # canlıya çıkacak derleme
 
 Supabase → Authentication → URL Configuration:
 
-- **Site URL:** canlı adres (şimdilik `http://localhost:3000`)
-- **Redirect URLs:** `http://localhost:3000/auth/callback` ve canlı adresin `/auth/callback` yolu
+- **Site URL:** `https://hafriyol.vercel.app`
+- **Redirect URLs:** `https://hafriyol.vercel.app/auth/callback` ve yerel geliştirme için `http://localhost:3000/auth/callback`
 
 Bu yapılmazsa kayıttan sonra gelen e-posta doğrulama bağlantısı uygulamaya dönmez.
 
