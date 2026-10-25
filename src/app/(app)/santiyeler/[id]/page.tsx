@@ -5,6 +5,7 @@ import { StatusBadge } from "@/components/status-badge";
 import { isUuid } from "@/lib/actions";
 import { canManage, getContext } from "@/lib/context";
 import { formatDateTR, formatTL } from "@/lib/format";
+import { routeLimit } from "@/lib/field-checks";
 import { formatTrNumber } from "@/lib/number";
 import { UNITS } from "@/lib/validation";
 import { SiteForm } from "../site-form";
@@ -134,6 +135,10 @@ export default async function SitePage({
                     <p className="text-sm text-muted">
                       {[r.origin, r.destination].filter(Boolean).join(" → ") || "—"}
                       {r.distance_km !== null && ` · ${formatTrNumber(r.distance_km, 2)} km`}
+                      {(() => {
+                        const limit = routeLimit(r);
+                        return limit && ` · ${limit.estimated ? "tahmini " : ""}en fazla ${limit.maxTrips} sefer/gün`;
+                      })()}
                     </p>
                   </div>
                   {manager && <DeleteButton action={deleteRoute} id={r.id} confirmText={`"${r.name}" silinsin mi?`} />}

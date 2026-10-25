@@ -28,6 +28,9 @@ describe("PDF çıktısı", () => {
       "₺12.865,44",
       "₺5.081,47",
       "resmî hakediş yerine geçmez",
+      "Makineler",
+      "EKS-01",
+      "18,9 !",
     ]) {
       expect(text).toContain(expected);
     }

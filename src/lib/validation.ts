@@ -27,7 +27,8 @@ type NumberOpts = { label: string; decimals: number; min?: number; minExclusive?
 // Türkçe yazılmış sayıyı (ör. "1.234,5") doğrular ve sayıya çevirir.
 // optional: boş giriş hata değil, null döner.
 function trNumberField({ label, decimals, min = 0, minExclusive = false, max }: NumberOpts, optional: boolean) {
-  return z.string().transform((raw, ctx): number | null => {
+  return z.string().optional().transform((input, ctx): number | null => {
+    const raw = input ?? "";
     if (optional && raw.trim() === "") return null;
     const n = parseTrNumber(raw);
     const fail = (message: string) => {
@@ -109,6 +110,7 @@ export const routeSchema = z.object({
   origin: optionalText(200),
   destination: optionalText(200),
   distance_km: optionalTrNumber({ label: "Mesafe", decimals: 2, max: 999_999 }),
+  cycle_minutes: optionalTrNumber({ label: "Çevrim süresi", decimals: 0, min: 0, minExclusive: true, max: 1440 }),
 });
 
 export const VEHICLE_OWNERSHIP = {
@@ -134,6 +136,7 @@ export const vehicleSchema = z.object({
   vehicle_type: z.string().trim().min(2, "Araç türünü girin").max(100, "Araç türü çok uzun"),
   ownership: z.enum(["own", "rented", "subcontractor"], "Mülkiyet seçin"),
   capacity_ton: optionalTrNumber({ label: "Kapasite", decimals: 2, min: 0, minExclusive: true, max: 999_999 }),
+  fuel_norm_lph: optionalTrNumber({ label: "Yakıt normu", decimals: 2, min: 0, minExclusive: true, max: 9_999 }),
   active: z.string().optional().transform((v) => v === "on" || v === "true"),
 });
 
@@ -156,6 +159,22 @@ export const tripSchema = z.object({
   note: optionalText(500),
   client_request_id: uuid("Form süresi doldu, sayfayı yenileyin"),
 });
+
+export const machineLogSchema = z
+  .object({
+    site_id: uuid("Şantiye seçin"),
+    vehicle_id: uuid("Makine seçin"),
+    log_date: requiredDate,
+    hours: optionalTrNumber({ label: "Çalışma saati", decimals: 2, min: 0, minExclusive: true, max: 24 }),
+    fuel_liters: optionalTrNumber({ label: "Mazot", decimals: 2, min: 0, minExclusive: true, max: 5000 }),
+    operator: optionalText(100),
+    note: optionalText(500),
+    client_request_id: uuid("Form süresi doldu, sayfayı yenileyin"),
+  })
+  .refine((m) => m.hours !== null || m.fuel_liters !== null, {
+    path: ["hours"],
+    message: "Çalışma saati veya mazot girin",
+  });
 
 export const EXPENSE_CATEGORIES = {
   fuel: "Mazot / yakıt",

@@ -1,6 +1,6 @@
 "use client";
 
-import { Minus, Plus, Route, Truck } from "lucide-react";
+import { AlertTriangle, Minus, Plus, Route, Truck } from "lucide-react";
 import { useEffect, useOptimistic, useState, useTransition } from "react";
 import { formatTrNumber } from "@/lib/number";
 import { tapTrip, undoTrip } from "./actions";
@@ -12,6 +12,7 @@ export type CounterVehicle = {
   capacityTon: number | null;
   trips: number;
   lastAt: string | null; // "14:32"
+  warning: string | null; // şişirilmiş sefer şüphesi
 };
 
 type Props = {
@@ -21,7 +22,8 @@ type Props = {
 };
 
 const ROUTE_KEY = "hafriyol_guzergah";
-const timeNow = () => new Intl.DateTimeFormat("tr-TR", { hour: "2-digit", minute: "2-digit", timeZone: "Europe/Istanbul" }).format(new Date());
+const timeNow = () =>
+  new Intl.DateTimeFormat("tr-TR", { hour: "2-digit", minute: "2-digit", timeZone: "Europe/Istanbul" }).format(new Date());
 
 export function TripCounter({ siteId, vehicles, routes }: Props) {
   const [routeId, setRouteId] = useState<string>("");
@@ -31,7 +33,9 @@ export function TripCounter({ siteId, vehicles, routes }: Props) {
   // Dokunuş sunucuya ulaşmadan sayı hemen artar; hata olursa eski hâline döner
   const [shown, adjust] = useOptimistic(vehicles, (state, change: { id: string; delta: number }) =>
     state.map((v) =>
-      v.id === change.id ? { ...v, trips: Math.max(0, v.trips + change.delta), lastAt: change.delta > 0 ? timeNow() : v.lastAt } : v,
+      v.id === change.id
+        ? { ...v, trips: Math.max(0, v.trips + change.delta), lastAt: change.delta > 0 ? timeNow() : v.lastAt }
+        : v,
     ),
   );
 
@@ -116,37 +120,45 @@ export function TripCounter({ siteId, vehicles, routes }: Props) {
 
       <ul className="grid grid-cols-[minmax(0,1fr)] gap-3 sm:grid-cols-2">
         {shown.map((v) => (
-          <li key={v.id} className="card flex min-w-0 items-center gap-2 p-3">
-            <div className="hidden size-11 shrink-0 items-center justify-center rounded-xl bg-brand/10 text-brand-strong min-[400px]:flex">
-              <Truck className="size-6" aria-hidden />
+          <li key={v.id} className={`card min-w-0 p-3 ${v.warning ? "border-red-400 dark:border-red-700" : ""}`}>
+            <div className="flex min-w-0 items-center gap-2">
+              <div className="hidden size-11 shrink-0 items-center justify-center rounded-xl bg-brand/10 text-brand-strong min-[400px]:flex">
+                <Truck className="size-6" aria-hidden />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-lg font-bold tabular-nums">{v.plate}</p>
+                <p className="truncate text-xs text-muted">
+                  {v.type}
+                  {v.lastAt && ` · son ${v.lastAt}`}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => undo(v)}
+                disabled={v.trips === 0}
+                aria-label={`${v.plate} son seferi geri al`}
+                className="flex size-11 shrink-0 items-center justify-center rounded-xl border border-line text-muted disabled:opacity-30"
+              >
+                <Minus className="size-5" aria-hidden />
+              </button>
+              <span className="w-9 text-center text-2xl font-extrabold tabular-nums" aria-label={`${v.trips} sefer`}>
+                {v.trips}
+              </span>
+              <button
+                type="button"
+                onClick={() => tap(v)}
+                aria-label={`${v.plate} +1 sefer`}
+                className="flex size-16 shrink-0 items-center justify-center rounded-2xl bg-brand text-white shadow-md active:scale-95 dark:text-black"
+              >
+                <Plus className="size-9" aria-hidden strokeWidth={3} />
+              </button>
             </div>
-            <div className="min-w-0 flex-1">
-              <p className="truncate text-lg font-bold tabular-nums">{v.plate}</p>
-              <p className="truncate text-xs text-muted">
-                {v.type}
-                {v.lastAt && ` · son ${v.lastAt}`}
+            {v.warning && (
+              <p className="mt-2 flex items-start gap-1.5 rounded-lg bg-red-50 p-2 text-xs font-medium text-red-800 dark:bg-red-950/50 dark:text-red-300">
+                <AlertTriangle className="size-4 shrink-0" aria-hidden />
+                Fazla sefer şüphesi · {v.warning}
               </p>
-            </div>
-            <button
-              type="button"
-              onClick={() => undo(v)}
-              disabled={v.trips === 0}
-              aria-label={`${v.plate} son seferi geri al`}
-              className="flex size-11 shrink-0 items-center justify-center rounded-xl border border-line text-muted disabled:opacity-30"
-            >
-              <Minus className="size-5" aria-hidden />
-            </button>
-            <span className="w-9 text-center text-2xl font-extrabold tabular-nums" aria-label={`${v.trips} sefer`}>
-              {v.trips}
-            </span>
-            <button
-              type="button"
-              onClick={() => tap(v)}
-              aria-label={`${v.plate} +1 sefer`}
-              className="flex size-16 shrink-0 items-center justify-center rounded-2xl bg-brand text-white shadow-md active:scale-95 dark:text-black"
-            >
-              <Plus className="size-9" aria-hidden strokeWidth={3} />
-            </button>
+            )}
           </li>
         ))}
       </ul>

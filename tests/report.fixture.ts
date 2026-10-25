@@ -47,5 +47,11 @@ export const sampleReport = () =>
     vehicles: [
       { id: "v1", plate: "06 ABC 123", vehicle_type: "Kamyon" },
       { id: "v2", plate: "44 ŞĞ 07", vehicle_type: "Damperli kamyon" },
+      { id: "v3", plate: "EKS-01", vehicle_type: "Ekskavatör", fuel_norm_lph: 15 },
+    ],
+    machineLogs: [
+      { vehicle_id: "v3", hours: 9.5, fuel_liters: 180 },
+      { vehicle_id: "v3", hours: 8, fuel_liters: 150 },
+      { vehicle_id: "v3", hours: 2, fuel_liters: null }, // yalnız saat: L/saat hesabına girmez
     ],
   });

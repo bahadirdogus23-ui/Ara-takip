@@ -184,7 +184,7 @@ test("K6: saha personeli giderleri ve raporu göremez", async ({ page, browser }
   await page.goto("/panel");
   await shot(page, "panel");
   await fieldPage.goto("/panel");
-  await expect(fieldPage.getByText("Test Hafriyat Ltd. Şti.")).toBeVisible();
+  await expect(fieldPage.getByRole("banner").getByText("Test Hafriyat Ltd. Şti.")).toBeVisible();
   const nav = fieldPage.getByRole("navigation", { name: "Ana menü" });
   await expect(nav.getByRole("link", { name: "Sefer" })).toBeVisible();
   await fieldPage.goto("/menu");
@@ -249,6 +249,65 @@ test("K9: hızlı kurulum ve tek dokunuşla sefer sayacı", async ({ page }) => 
   await shot(page, "bugun");
   await page.goto("/gunluk");
   await expect(page.locator("#pr-work_item_id option", { hasText: "Stabilize (alt temel) serme" })).toHaveCount(1);
+});
+
+test("K10: makine/mazot, şişirilmiş sefer uyarısı ve WhatsApp özeti", async ({ page }) => {
+  await signIn(page, owner);
+
+  // Normu 15 L/saat olan bir ekskavatör
+  await page.goto("/araclar");
+  await page.locator("#vh-new-plate").fill("EKS-01");
+  await page.locator("#vh-new-vehicle_type").fill("Ekskavatör");
+  await page.locator("#vh-new-fuel_norm_lph").fill("15");
+  await page.getByRole("button", { name: "Araç ekle" }).click();
+  await expect(page.getByText("norm 15 L/saat")).toBeVisible();
+
+  // Bir seferi 60 dk süren güzergâh: günde en fazla 11 sefer
+  await page.goto("/santiyeler");
+  await page.getByRole("link", { name: /Köy Yolu Stabilize/ }).click();
+  await page.locator("#rt-new-name").fill("Ocak → Km 2");
+  await page.locator("#rt-new-cycle_minutes").fill("60");
+  await page.getByRole("button", { name: "Güzergâh ekle" }).click();
+  await expect(page.getByText("en fazla 11 sefer/gün")).toBeVisible();
+
+  await page.goto("/sefer");
+  await page.getByRole("button", { name: "Ocak → Km 2" }).click();
+  const plus = page.getByRole("button", { name: "35 KY 102 +1 sefer" });
+  for (let i = 1; i <= 12; i++) {
+    await plus.click();
+    await expect(page.getByLabel(`${i} sefer`).first()).toBeVisible();
+  }
+  await page.reload();
+  await expect(page.getByText(/Fazla sefer şüphesi · Ocak → Km 2: 12 sefer, en fazla 11/)).toBeVisible();
+  // Ekskavatör sefer yapmaz, sayaçta görünmez
+  await expect(page.getByRole("button", { name: "EKS-01 +1 sefer" })).toHaveCount(0);
+  await shot(page, "sefer-uyari");
+
+  // 10 saatte 190 L = 19 L/saat > 15 × 1,2
+  await page.goto("/makine");
+  await page.locator("#mk-vehicle_id").selectOption({ label: "EKS-01 · Ekskavatör" });
+  await page.locator("#mk-hours").fill("10");
+  await page.locator("#mk-fuel_liters").fill("190");
+  await page.locator("#mk-operator").fill("Ali Usta");
+  await page.getByRole("button", { name: "Kaydet" }).click();
+  await expect(page.getByText("Makine kaydı alındı")).toBeVisible();
+  await expect(page.getByText("Norm (15 L/saat) aşıldı")).toBeVisible();
+  await expect(page.locator("#mk-operator")).toHaveValue("Ali Usta");
+  await expectNoHorizontalScroll(page);
+
+  await page.goto("/panel");
+  await expect(page.getByRole("heading", { name: "Dikkat (2)" })).toBeVisible();
+  const summary = page.locator("pre");
+  await expect(summary).toContainText("35 KY 102: 12 sefer");
+  await expect(summary).toContainText("EKS-01: 10 saat, 190 L");
+  await expect(summary).not.toContainText("₺");
+  const wa = await page.getByRole("link", { name: "WhatsApp'a gönder" }).getAttribute("href");
+  expect(wa).toMatch(/^https:\/\/wa\.me\/\?text=/);
+  await expectNoHorizontalScroll(page);
+  await shot(page, "bugun-uyari");
+
+  await page.goto("/rapor");
+  await expect(page.getByRole("heading", { name: "Makineler" })).toBeVisible();
 });
 
 test("K8: başka firma hiçbir veriyi göremez", async ({ browser }) => {

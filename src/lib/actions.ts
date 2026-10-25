@@ -3,7 +3,7 @@ import { getContext } from "@/lib/context";
 import { dbErrorMessage } from "@/lib/errors";
 import type { FormState } from "@/lib/validation";
 
-type DeletableTable = "work_items" | "routes" | "vehicles" | "production_entries" | "trip_entries" | "expenses";
+type DeletableTable = "work_items" | "routes" | "vehicles" | "production_entries" | "trip_entries" | "expenses" | "machine_logs";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 

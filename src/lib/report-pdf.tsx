@@ -160,6 +160,36 @@ function ReportDocument({ r }: { r: Report }) {
           />
         )}
 
+        {r.machines.length > 0 && (
+          <>
+            <Text style={s.h2}>Makineler</Text>
+            <Table
+              cols={[
+                { title: "Plaka / makine", width: "26%" },
+                { title: "Tür", width: "22%" },
+                { title: "Saat", width: "13%", right: true },
+                { title: "Mazot (L)", width: "13%", right: true },
+                { title: "L/saat", width: "13%", right: true },
+                { title: "Norm", width: "13%", right: true },
+              ]}
+              rows={r.machines.map((m) => [
+                m.plate,
+                m.vehicleType,
+                formatTrNumber(m.hours, 2),
+                formatTrNumber(m.fuel, 0),
+                m.lph === null ? "—" : `${formatTrNumber(m.lph, 1)}${m.over ? " !" : ""}`,
+                m.normLph === null ? "—" : formatTrNumber(m.normLph, 1),
+              ])}
+              total={["Toplam", "", formatTrNumber(totals.machineHours, 2), formatTrNumber(totals.fuelLiters, 0), "", ""]}
+            />
+            {r.machines.some((m) => m.over) && (
+              <Text style={[s.muted, { marginTop: 4, color: "#b91c1c" }]}>
+                {"! işaretli makineler yakıt normunu %20'den fazla aştı."}
+              </Text>
+            )}
+          </>
+        )}
+
         <View style={s.note}>
           <Text>Bu rapor iç takip içindir, resmî hakediş yerine geçmez. Fiyat farkı, kesintiler, teminat ve vergiler hesaba katılmaz.</Text>
           <Text>Gerçekleşme = dönem miktarı ÷ planlanan miktar.</Text>

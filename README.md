@@ -5,7 +5,13 @@ gider ve dönem raporu takip uygulaması.
 
 **Canlı adres:** https://hafriyol.vercel.app (Vercel, Frankfurt). Bu dala yapılan her gönderim otomatik yayınlanır.
 
-**Durum:** 4. hafta: kullanıcı yönetimi eklendi, kabul testleri (K1–K8) tarayıcıda otomatik çalışıyor, uygulama yayında. Sırada pilot kullanıcı var. Veritabanı Supabase'te (`hafriyol` projesi, Frankfurt).
+**Durum:** Aşama 2 tamam. Öne çıkanlar:
+
+- Tek dokunuşla sefer sayacı, şişirilmiş sefer uyarısı (güzergâh çevrim süresine göre)
+- İş makinesi saati ve mazot, yakıt normu aşımı uyarısı
+- WhatsApp'a tek dokunuşla gün sonu raporu (para tutarı içermez)
+- Bir dakikalık kurulum (hazır hafriyat/yol iş kalemleri, plakaları alt alta yazma)
+- Dönem raporu, Excel ve PDF (makineler dahil) Veritabanı Supabase'te (`hafriyol` projesi, Frankfurt).
 
 - Mimari plan, ekranlar, riskler, kabul testleri: [`docs/01-mimari-plan.md`](docs/01-mimari-plan.md)
 - Veritabanı şeması (taslak): [`supabase/migrations/`](supabase/migrations/)
@@ -61,7 +67,7 @@ uygulama ona bağlanır ve kabul testleri telefon ekran boyutunda çalışır:
 
 ```bash
 ./scripts/e2e-stack.sh        # ilk seferde Auth ve PostgREST ikili dosyalarını indirir
-npm run test:e2e              # K1–K8 kabul testleri
+npm run test:e2e              # K1–K10 kabul testleri
 ./scripts/e2e-stack.sh stop
 ```
 

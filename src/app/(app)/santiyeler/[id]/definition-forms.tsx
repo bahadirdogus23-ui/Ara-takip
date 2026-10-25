@@ -51,6 +51,14 @@ export function RouteForm({ siteId, route }: { siteId: string; route?: Tables<"r
         <Field idPrefix={p} name="destination" label="Nereye" defaultValue={route?.destination} state={state} />
         <NumberField idPrefix={p} name="distance_km" label="Mesafe (km)" defaultValue={num(route?.distance_km ?? null)} state={state} />
       </div>
+      <NumberField
+        idPrefix={p}
+        name="cycle_minutes"
+        label="Bir seferin süresi (dakika, gidiş-dönüş)"
+        defaultValue={num(route?.cycle_minutes ?? null)}
+        hint="Boş bırakılırsa mesafeden tahmin edilir. Günde yapılabilecek sefer sınırı buradan hesaplanır."
+        state={state}
+      />
       <SubmitButton>{route ? "Kaydet" : "Güzergâh ekle"}</SubmitButton>
     </form>
   );

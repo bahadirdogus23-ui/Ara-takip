@@ -27,6 +27,14 @@ describe("dönem raporu", () => {
     expect(r.items[1]).toMatchObject({ unitPrice: null, progressPercent: null, unitCost: null, amount: 0 });
   });
 
+  it("makine saat ve mazotunu toplar, normu aşanı işaretler", () => {
+    // 330 L ÷ 17,5 saat = 18,9 L/saat > 15 × 1,2 = 18
+    expect(r.machines).toEqual([
+      { plate: "EKS-01", vehicleType: "Ekskavatör", hours: 19.5, fuel: 330, lph: 18.9, normLph: 15, over: true },
+    ]);
+    expect(r.totals).toMatchObject({ machineHours: 19.5, fuelLiters: 330 });
+  });
+
   it("gider türlerini Türkçe adlandırır", () => {
     expect(r.expenses.map((e) => e.label)).toEqual(["Mazot / yakıt", "İşçilik"]);
   });

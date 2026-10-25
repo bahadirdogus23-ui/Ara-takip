@@ -6,6 +6,8 @@ import type { Tables } from "@/lib/database.types";
 import { VEHICLE_OWNERSHIP } from "@/lib/validation";
 import { saveVehicle } from "./actions";
 
+const trNum = (v: number | null | undefined) => (v === null || v === undefined ? "" : String(v).replace(".", ","));
+
 const ownershipOptions = Object.entries(VEHICLE_OWNERSHIP).map(([value, label]) => ({ value, label }));
 
 export function VehicleForm({ vehicle }: { vehicle?: Tables<"vehicles"> }) {
@@ -28,10 +30,19 @@ export function VehicleForm({ vehicle }: { vehicle?: Tables<"vehicles"> }) {
           idPrefix={p}
           name="capacity_ton"
           label="Kapasite (ton)"
-          defaultValue={vehicle?.capacity_ton === null || vehicle?.capacity_ton === undefined ? "" : String(vehicle.capacity_ton).replace(".", ",")}
+          defaultValue={trNum(vehicle?.capacity_ton)}
+          hint="Kamyonlar için; tonaj tahmini"
           state={state}
         />
       </div>
+      <NumberField
+        idPrefix={p}
+        name="fuel_norm_lph"
+        label="Yakıt normu (litre/saat)"
+        defaultValue={trNum(vehicle?.fuel_norm_lph)}
+        hint="İş makineleri için; bunun %20 üzerinde yakan kayıtlar kırmızı görünür"
+        state={state}
+      />
       <label className="flex min-h-11 items-center gap-2 text-sm">
         <input type="checkbox" name="active" defaultChecked={active} className="size-5 accent-[var(--brand)]" />
         Aktif (sefer girişinde listelenir)

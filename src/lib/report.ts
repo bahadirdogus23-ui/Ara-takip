@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/lib/database.types";
+import { fuelCheck } from "@/lib/field-checks";
 import { toKurus, toTL } from "@/lib/money";
 import { EXPENSE_CATEGORIES, UNITS } from "@/lib/validation";
 
@@ -26,6 +27,16 @@ export type ReportExpense = { category: string; label: string; amount: number; v
 
 export type ReportTrip = { plate: string; vehicleType: string; trips: number; tonnage: number };
 
+export type ReportMachine = {
+  plate: string;
+  vehicleType: string;
+  hours: number;
+  fuel: number;
+  lph: number | null; // litre/saat (yalnızca saat ve mazotun ikisi de girilmiş kayıtlardan)
+  normLph: number | null;
+  over: boolean;
+};
+
 export type Report = {
   site: { id: string; name: string; code: string | null; employer: string | null };
   tenantName: string;
@@ -34,6 +45,7 @@ export type Report = {
   items: ReportItem[];
   expenses: ReportExpense[];
   trips: ReportTrip[];
+  machines: ReportMachine[];
   totals: {
     amount: number; // Σ imalat tutarı (KDV hariç)
     expenseNet: number; // Σ gider (KDV hariç)
@@ -43,13 +55,16 @@ export type Report = {
     difference: number; // imalat tutarı − gider (KDV hariç)
     trips: number;
     tonnage: number;
+    machineHours: number;
+    fuelLiters: number;
   };
 };
 
 type ProductionRow = Database["public"]["Functions"]["production_summary"]["Returns"][number];
 type ExpenseRow = Database["public"]["Functions"]["expense_summary"]["Returns"][number];
 type TripRow = { vehicle_id: string; trip_count: number; tonnage: number | null };
-type VehicleRow = { id: string; plate: string; vehicle_type: string };
+type VehicleRow = { id: string; plate: string; vehicle_type: string; fuel_norm_lph?: number | null };
+type MachineLogRow = { vehicle_id: string; hours: number | null; fuel_liters: number | null };
 
 const n = (v: unknown) => (v === null || v === undefined ? null : Number(v));
 export const unitLabel = (u: string) => UNITS[u as keyof typeof UNITS] ?? u;
@@ -65,6 +80,7 @@ export function summarizeReport(input: {
   expenses: ExpenseRow[];
   trips: TripRow[];
   vehicles: VehicleRow[];
+  machineLogs?: MachineLogRow[];
 }): Report {
   const items: ReportItem[] = input.production.map((r) => ({
     code: r.code ?? null,
@@ -99,6 +115,37 @@ export function summarizeReport(input: {
   }
   const trips = [...byVehicle.values()].sort((a, b) => a.plate.localeCompare(b.plate, "tr"));
 
+  // Makineler: toplam saat ve mazot; L/saat yalnızca ikisinin birlikte girildiği kayıtlardan
+  const byMachine = new Map<string, { hours: number; fuel: number; pairedHours: number; pairedFuel: number }>();
+  for (const l of input.machineLogs ?? []) {
+    const h = Number(l.hours ?? 0);
+    const f = Number(l.fuel_liters ?? 0);
+    const m = byMachine.get(l.vehicle_id) ?? { hours: 0, fuel: 0, pairedHours: 0, pairedFuel: 0 };
+    m.hours += h;
+    m.fuel += f;
+    if (h && f) {
+      m.pairedHours += h;
+      m.pairedFuel += f;
+    }
+    byMachine.set(l.vehicle_id, m);
+  }
+  const machines: ReportMachine[] = [...byMachine]
+    .map(([id, m]) => {
+      const v = vehicleById.get(id);
+      const norm = v?.fuel_norm_lph ? Number(v.fuel_norm_lph) : null;
+      const fc = fuelCheck(m.pairedHours || null, m.pairedFuel || null, norm);
+      return {
+        plate: v?.plate ?? "—",
+        vehicleType: v?.vehicle_type ?? "",
+        hours: Math.round(m.hours * 100) / 100,
+        fuel: Math.round(m.fuel * 100) / 100,
+        lph: fc.lph,
+        normLph: norm,
+        over: fc.over,
+      };
+    })
+    .sort((a, b) => a.plate.localeCompare(b.plate, "tr"));
+
   // Para toplamları kuruş üzerinden
   const sumK = (xs: number[]) => xs.reduce((s, x) => s + toKurus(x), 0);
   const amountK = sumK(items.map((i) => i.amount));
@@ -113,6 +160,7 @@ export function summarizeReport(input: {
     items,
     expenses,
     trips,
+    machines,
     totals: {
       amount: toTL(amountK),
       expenseNet: toTL(expenseNetK),
@@ -122,6 +170,8 @@ export function summarizeReport(input: {
       difference: toTL(amountK - expenseNetK),
       trips: trips.reduce((s, t) => s + t.trips, 0),
       tonnage: Math.round(trips.reduce((s, t) => s + t.tonnage, 0) * 1000) / 1000,
+      machineHours: Math.round(machines.reduce((s, m) => s + m.hours, 0) * 100) / 100,
+      fuelLiters: Math.round(machines.reduce((s, m) => s + m.fuel, 0) * 100) / 100,
     },
   };
 }
@@ -144,13 +194,14 @@ export async function loadReport(
   if (!site) return null;
 
   const args = { p_site: siteId, p_from: from, p_to: to };
-  const [prod, exp, trips, vehicles] = await Promise.all([
+  const [prod, exp, trips, vehicles, machineLogs] = await Promise.all([
     supabase.rpc("production_summary", args),
     supabase.rpc("expense_summary", args),
     supabase.from("trip_entries").select("vehicle_id, trip_count, tonnage").eq("site_id", siteId).gte("entry_date", from).lte("entry_date", to),
-    supabase.from("vehicles").select("id, plate, vehicle_type").eq("tenant_id", tenant.id),
+    supabase.from("vehicles").select("id, plate, vehicle_type, fuel_norm_lph").eq("tenant_id", tenant.id),
+    supabase.from("machine_logs").select("vehicle_id, hours, fuel_liters").eq("site_id", siteId).gte("log_date", from).lte("log_date", to),
   ]);
-  const failed = [prod, exp, trips, vehicles].find((r) => r.error);
+  const failed = [prod, exp, trips, vehicles, machineLogs].find((r) => r.error);
   if (failed?.error) throw new Error("Rapor verisi alınamadı");
 
   return summarizeReport({
@@ -162,5 +213,6 @@ export async function loadReport(
     expenses: exp.data ?? [],
     trips: trips.data ?? [],
     vehicles: vehicles.data ?? [],
+    machineLogs: machineLogs.data ?? [],
   });
 }

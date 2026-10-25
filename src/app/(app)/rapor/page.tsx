@@ -208,6 +208,29 @@ export default async function ReportPage({
         </section>
       </div>
 
+      {report.machines.length > 0 && (
+        <section className="space-y-2">
+          <h2 className="text-lg font-bold">Makineler</h2>
+          <div className="card space-y-1 text-sm">
+            {report.machines.map((m) => (
+              <div key={m.plate} className={`flex justify-between gap-3 ${m.over ? "font-semibold text-red-700 dark:text-red-400" : ""}`}>
+                <span>
+                  {m.plate} <span className="font-normal text-muted">{m.vehicleType}</span>
+                </span>
+                <span className="tabular-nums">
+                  {formatTrNumber(m.hours, 2)} sa · {formatTrNumber(m.fuel, 0)} L
+                  {m.lph !== null && ` · ${formatTrNumber(m.lph, 1)} L/sa`}
+                  {m.over && " ⚠"}
+                </span>
+              </div>
+            ))}
+            <div className="mt-2 border-t border-line pt-2">
+              <Row label="Toplam" value={`${formatTrNumber(totals.machineHours, 2)} saat · ${formatTrNumber(totals.fuelLiters, 0)} L`} strong />
+            </div>
+          </div>
+        </section>
+      )}
+
       <p className="rounded-md bg-amber-50 p-3 text-xs text-amber-900">
         Bu rapor iç takip içindir, resmî hakediş yerine geçmez. Fiyat farkı, kesintiler, teminat ve vergiler hesaba katılmaz.
       </p>

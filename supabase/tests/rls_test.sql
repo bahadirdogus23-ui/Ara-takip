@@ -267,4 +267,35 @@ exception when insufficient_privilege then
 end $$;
 reset role;
 
+-- T16: Makine kayıtları
+select pg_temp.login('00000000-0000-0000-0000-0000000000a2');
+insert into public.machine_logs(tenant_id, site_id, vehicle_id, log_date, hours, fuel_liters)
+  values (:'tenant_a', :'site_a', :'vehicle_a', '2026-10-01', 9.5, 180);
+reset role;
+select pg_temp.check((select count(*) from public.audit_log where table_name = 'machine_logs') = 1, 'T16a Saha personeli makine saati ve mazot girer, işlem geçmişine yazılır');
+select pg_temp.login('00000000-0000-0000-0000-00000000000b');
+select pg_temp.check((select count(*) from public.machine_logs) = 0, 'T16b Başka firma makine kayıtlarını göremez');
+\set ON_ERROR_STOP off
+insert into public.machine_logs(tenant_id, site_id, vehicle_id, log_date, hours)
+  values (:'tenant_b', :'site_b', :'vehicle_a', '2026-10-01', 5);
+\set ON_ERROR_STOP on
+reset role;
+select pg_temp.check((select count(*) from public.machine_logs) = 1, 'T16c Başka firmanın aracına makine kaydı açılamaz');
+select pg_temp.login('00000000-0000-0000-0000-00000000000a');
+do $$ begin
+  insert into public.machine_logs(tenant_id, site_id, vehicle_id, log_date)
+    select tenant_id, site_id, vehicle_id, '2026-10-02' from public.machine_logs limit 1;
+  raise exception 'TEST BAŞARISIZ: T16d boş makine kaydı kabul edildi';
+exception when check_violation then
+  raise notice 'GEÇTİ: T16d Saat ya da mazot girilmeden kayıt açılamaz';
+end $$;
+do $$ begin
+  insert into public.machine_logs(tenant_id, site_id, vehicle_id, log_date, hours)
+    select tenant_id, site_id, vehicle_id, '2026-10-02', 25 from public.machine_logs limit 1;
+  raise exception 'TEST BAŞARISIZ: T16e 25 saat kabul edildi';
+exception when check_violation then
+  raise notice 'GEÇTİ: T16e Günde 24 saatten fazla çalışma girilemez';
+end $$;
+reset role;
+
 \echo 'TÜM VERİTABANI TESTLERİ GEÇTİ'

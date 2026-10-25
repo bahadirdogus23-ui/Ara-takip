@@ -64,6 +64,36 @@ export type Database = {
         Update: Partial<Database["public"]["Tables"]["expenses"]["Insert"]>;
         Relationships: Rel[];
       };
+      machine_logs: {
+        Row: {
+          client_request_id: string | null;
+          created_at: string;
+          created_by: string;
+          fuel_liters: number | null;
+          hours: number | null;
+          id: string;
+          log_date: string;
+          note: string | null;
+          operator: string | null;
+          site_id: string;
+          tenant_id: string;
+          vehicle_id: string;
+        };
+        Insert: {
+          client_request_id?: string | null;
+          fuel_liters?: number | null;
+          hours?: number | null;
+          id?: string;
+          log_date: string;
+          note?: string | null;
+          operator?: string | null;
+          site_id: string;
+          tenant_id: string;
+          vehicle_id: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["machine_logs"]["Insert"]>;
+        Relationships: Rel[];
+      };
       memberships: {
         Row: {
           created_at: string;
@@ -108,6 +138,7 @@ export type Database = {
       routes: {
         Row: {
           created_at: string;
+          cycle_minutes: number | null;
           destination: string | null;
           distance_km: number | null;
           id: string;
@@ -117,6 +148,7 @@ export type Database = {
           tenant_id: string;
         };
         Insert: {
+          cycle_minutes?: number | null;
           destination?: string | null;
           distance_km?: number | null;
           id?: string;
@@ -205,6 +237,7 @@ export type Database = {
           active: boolean;
           capacity_ton: number | null;
           created_at: string;
+          fuel_norm_lph: number | null;
           id: string;
           ownership: string;
           plate: string;
@@ -214,6 +247,7 @@ export type Database = {
         Insert: {
           active?: boolean;
           capacity_ton?: number | null;
+          fuel_norm_lph?: number | null;
           id?: string;
           ownership?: string;
           plate: string;

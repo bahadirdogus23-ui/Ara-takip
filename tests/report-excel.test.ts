@@ -5,10 +5,16 @@ import { buildReportWorkbook } from "@/lib/report-excel";
 import { sampleReport } from "./report.fixture";
 
 describe("Excel çıktısı", () => {
-  it("dört sayfa üretir, toplamlar formül + doğru sonuç içerir", async () => {
+  it("beş sayfa üretir, toplamlar formül + doğru sonuç içerir", async () => {
     const wb = new ExcelJS.Workbook();
     await wb.xlsx.load((await buildReportWorkbook(sampleReport())).buffer as ArrayBuffer);
-    expect(wb.worksheets.map((w) => w.name)).toEqual(["Özet", "İmalat", "Giderler", "Seferler"]);
+    expect(wb.worksheets.map((w) => w.name)).toEqual(["Özet", "İmalat", "Giderler", "Seferler", "Makineler"]);
+
+    const m = wb.getWorksheet("Makineler")!;
+    expect(m.getCell("A2").value).toBe("EKS-01");
+    expect(m.getCell("E2").value).toBe(18.9);
+    expect(m.getCell("G2").value).toBe("EVET");
+    expect((m.getCell("D3").value as { result: number }).result).toBe(330);
 
     const p = wb.getWorksheet("İmalat")!;
     expect(p.getCell("B2").value).toBe("Kazı (yumuşak toprak)");

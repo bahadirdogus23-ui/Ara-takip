@@ -51,6 +51,8 @@ export async function buildReportWorkbook(r: Report): Promise<Uint8Array> {
     ["Tutar − gider (KDV hariç)", r.totals.difference, TL],
     ["Toplam sefer", r.totals.trips],
     ["Toplam tonaj", r.totals.tonnage, QTY],
+    ["Makine çalışması (saat)", r.totals.machineHours, QTY],
+    ["Mazot (litre)", r.totals.fuelLiters, QTY],
   ];
   for (const [label, value, fmt] of rows) {
     const row = s.addRow([label, value]);
@@ -104,6 +106,23 @@ export async function buildReportWorkbook(r: Report): Promise<Uint8Array> {
   ]);
   for (const x of r.trips) t.addRow(x);
   totalRow(t, "Toplam", { trips: r.totals.trips, tonnage: r.totals.tonnage });
+
+  // Makineler
+  const m = wb.addWorksheet("Makineler");
+  header(m, [
+    { header: "Plaka / makine", key: "plate", width: 16 },
+    { header: "Tür", key: "vehicleType", width: 18 },
+    { header: "Çalışma (saat)", key: "hours", width: 14, numFmt: "#,##0.##" },
+    { header: "Mazot (L)", key: "fuel", width: 12, numFmt: "#,##0.##" },
+    { header: "L/saat", key: "lph", width: 10, numFmt: "0.0" },
+    { header: "Norm L/saat", key: "normLph", width: 12, numFmt: "0.0" },
+    { header: "Norm aşımı", key: "overText", width: 12 },
+  ]);
+  for (const x of r.machines) {
+    const row = m.addRow({ ...x, overText: x.over ? "EVET" : "" });
+    if (x.over) row.getCell("overText").font = { bold: true, color: { argb: "FFB91C1C" } };
+  }
+  totalRow(m, "Toplam", { hours: r.totals.machineHours, fuel: r.totals.fuelLiters });
 
   return new Uint8Array(await wb.xlsx.writeBuffer());
 }
