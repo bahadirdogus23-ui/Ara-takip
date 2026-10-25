@@ -1,16 +1,18 @@
+import { LogOut } from "lucide-react";
 import Link from "next/link";
 import { signOut } from "@/app/(auth)/actions";
 import { ROLE_LABELS, canManage, getContext } from "@/lib/context";
-import { NavLinks } from "./nav-links";
+import { BottomNav, DesktopNav } from "./nav";
 import { TenantSwitcher } from "./tenant-switcher";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const { user, tenant, tenants } = await getContext();
+  const access = { manager: canManage(tenant.role), owner: tenant.role === "owner" };
 
   return (
     <div className="min-h-dvh">
-      <header className="border-b border-line bg-surface">
-        <div className="mx-auto flex max-w-5xl flex-wrap items-center gap-x-4 gap-y-2 px-4 py-3">
+      <header className="sticky top-0 z-30 border-b border-line bg-surface/95 backdrop-blur">
+        <div className="mx-auto flex max-w-5xl items-center gap-3 px-4 py-2.5">
           <Link href="/panel" className="text-xl font-extrabold tracking-tight">
             Hafri<span className="text-brand">yol</span>
           </Link>
@@ -24,13 +26,17 @@ export default async function AppLayout({ children }: { children: React.ReactNod
               {user.email} · {ROLE_LABELS[tenant.role]}
             </p>
           </div>
-          <form action={signOut}>
-            <button className="btn-secondary min-h-9 px-3 text-sm">Çıkış</button>
+          <form action={signOut} className="hidden md:block">
+            <button className="btn-secondary min-h-9 gap-1.5 px-3 text-sm">
+              <LogOut className="size-4" aria-hidden />
+              Çıkış
+            </button>
           </form>
         </div>
-        <NavLinks manager={canManage(tenant.role)} owner={tenant.role === "owner"} />
+        <DesktopNav {...access} />
       </header>
-      <main className="mx-auto max-w-5xl px-4 py-6">{children}</main>
+      <main className="mx-auto max-w-5xl px-4 pt-5 pb-28 md:pb-10">{children}</main>
+      <BottomNav />
     </div>
   );
 }

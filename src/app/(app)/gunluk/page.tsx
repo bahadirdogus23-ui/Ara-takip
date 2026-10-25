@@ -3,6 +3,7 @@ import Link from "next/link";
 import { DeleteButton } from "@/components/form";
 import { canManage, getContext } from "@/lib/context";
 import { formatDateTR, isoDateTR } from "@/lib/format";
+import { pickSite } from "@/lib/site-pref";
 import { formatTrNumber } from "@/lib/number";
 import { UNITS } from "@/lib/validation";
 import { deleteProduction, deleteTrip } from "./actions";
@@ -34,15 +35,15 @@ export default async function DailyEntryPage({
         <h1 className="text-xl font-bold">Günlük giriş</h1>
         <p className="mt-2 text-sm text-muted">Kayıt girebilmek için devam eden bir şantiye olmalı.</p>
         {canManage(tenant.role) && (
-          <Link href="/santiyeler/yeni" className="btn-primary mt-4">
-            Şantiye ekle
+          <Link href="/kurulum" className="btn-primary mt-4">
+            Hızlı kurulum
           </Link>
         )}
       </div>
     );
   }
 
-  const site = sites.find((s) => s.id === santiye) ?? sites[0];
+  const site = (await pickSite(sites, santiye))!;
   const today = isoDateTR();
   const date = tarih && /^\d{4}-\d{2}-\d{2}$/.test(tarih) ? tarih : today;
 

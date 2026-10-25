@@ -13,7 +13,10 @@ export function SiteDatePicker({
   date: string;
 }) {
   const router = useRouter();
-  const go = (site: string, day: string) => router.push(`/gunluk?santiye=${site}&tarih=${day}`);
+  const go = (site: string, day: string) => {
+    document.cookie = `hafriyol_santiye=${site}; path=/; max-age=31536000; samesite=lax`;
+    router.push(`/gunluk?santiye=${site}&tarih=${day}`);
+  };
 
   return (
     <div className="grid grid-cols-[1fr_auto] gap-3">

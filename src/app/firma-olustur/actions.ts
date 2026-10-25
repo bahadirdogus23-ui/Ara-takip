@@ -17,5 +17,6 @@ export async function createTenant(_prev: FormState, formData: FormData): Promis
   if (error) return { error: dbErrorMessage(error), values };
 
   await setActiveTenantCookie(tenantId);
-  redirect("/panel");
+  // Yeni firma: önce bir dakikalık kurulum
+  redirect("/kurulum");
 }

@@ -1,95 +1,171 @@
+import { BarChart3, ClipboardPlus, PartyPopper, Receipt, Rocket, Truck, type LucideIcon } from "lucide-react";
 import Link from "next/link";
+import { SitePicker } from "@/components/site-picker";
 import { canManage, getContext } from "@/lib/context";
-import { formatTL, monthRangeTR } from "@/lib/format";
-import { StatusBadge } from "@/components/status-badge";
+import { formatTL, isoDateTR, monthRangeTR } from "@/lib/format";
+import { toKurus, toTL } from "@/lib/money";
+import { formatTrNumber } from "@/lib/number";
+import { pickSite } from "@/lib/site-pref";
+import { UNITS } from "@/lib/validation";
 
-export const metadata = { title: "Panel" };
+export const metadata = { title: "Bugün" };
 
-export default async function DashboardPage() {
+const unitLabel = (u: string) => UNITS[u as keyof typeof UNITS] ?? u;
+const sumAmount = (rows: { amount: number }[] | null) => toTL((rows ?? []).reduce((s, r) => s + toKurus(Number(r.amount ?? 0)), 0));
+
+function greeting(): string {
+  const h = Number(new Intl.DateTimeFormat("en-GB", { hour: "numeric", hour12: false, timeZone: "Europe/Istanbul" }).format(new Date()));
+  return h < 11 ? "Günaydın" : h < 18 ? "İyi günler" : "İyi akşamlar";
+}
+
+const longDate = () =>
+  new Intl.DateTimeFormat("tr-TR", { weekday: "long", day: "numeric", month: "long", timeZone: "Europe/Istanbul" }).format(new Date());
+
+export default async function TodayPage({ searchParams }: { searchParams: Promise<{ santiye?: string; hazir?: string }> }) {
+  const { santiye, hazir } = await searchParams;
   const { supabase, tenant } = await getContext();
-  const { from, to } = monthRangeTR();
-
-  const { data: sites, error } = await supabase
-    .from("sites")
-    .select("id, name, code, employer, status")
-    .eq("tenant_id", tenant.id)
-    .order("status")
-    .order("name");
-  if (error) throw new Error("Şantiyeler alınamadı");
-
-  const active = (sites ?? []).filter((s) => s.status === "active");
-
-  // Her aktif şantiyenin bu ayki imalat tutarı (veritabanında hesaplanır)
-  const totals = await Promise.all(
-    active.map(async (s) => {
-      const { data } = await supabase.rpc("production_summary", { p_site: s.id, p_from: from, p_to: to });
-      return [s.id, (data ?? []).reduce((sum, r) => sum + Number(r.amount ?? 0), 0)] as const;
-    }),
-  );
-  const totalBySite = new Map(totals);
-  const monthTotal = totals.reduce((sum, [, v]) => sum + v, 0);
   const manager = canManage(tenant.role);
 
+  const { data: sites } = await supabase.from("sites").select("id, name").eq("tenant_id", tenant.id).eq("status", "active").order("name");
+  const site = await pickSite(sites ?? [], santiye);
+
+  if (!site) {
+    return (
+      <div className="mx-auto max-w-lg space-y-4">
+        <Heading />
+        <div className="card text-center">
+          <Rocket className="mx-auto size-10 text-brand" aria-hidden />
+          <h2 className="mt-2 text-lg font-bold">Bir dakikada başlayın</h2>
+          <p className="mt-1 text-sm text-muted">
+            Şantiyenizi, yapacağınız işleri ve kamyonlarınızı tek ekrandan ekleyin; hemen sefer saymaya başlayın.
+          </p>
+          {manager ? (
+            <Link href="/kurulum" className="btn-primary mt-4">
+              Hızlı kurulum
+            </Link>
+          ) : (
+            <p className="mt-3 text-sm text-muted">Firma yöneticinizin şantiye eklemesi gerekiyor.</p>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  const today = isoDateTR();
+  const month = monthRangeTR();
+  const [{ data: todayItems }, { data: monthItems }, { data: trips }, { data: vehicles }] = await Promise.all([
+    supabase.rpc("production_summary", { p_site: site.id, p_from: today, p_to: today }),
+    supabase.rpc("production_summary", { p_site: site.id, p_from: month.from, p_to: month.to }),
+    supabase.from("trip_entries").select("vehicle_id, trip_count, tonnage").eq("site_id", site.id).eq("entry_date", today),
+    supabase.from("vehicles").select("id, plate, capacity_ton").eq("tenant_id", tenant.id),
+  ]);
+
+  const vehicleById = new Map(vehicles?.map((v) => [v.id, v]));
+  const byVehicle = new Map<string, number>();
+  let tons = 0;
+  for (const t of trips ?? []) {
+    byVehicle.set(t.vehicle_id, (byVehicle.get(t.vehicle_id) ?? 0) + t.trip_count);
+    // Gerçek tonaj girilmişse o, yoksa araç kapasitesine göre tahmin
+    const cap = vehicleById.get(t.vehicle_id)?.capacity_ton;
+    tons += t.tonnage !== null ? Number(t.tonnage) : cap ? Number(cap) * t.trip_count : 0;
+  }
+  const tripTotal = [...byVehicle.values()].reduce((s, n) => s + n, 0);
+  const producedToday = (todayItems ?? []).filter((i) => Number(i.quantity) > 0);
+
   return (
-    <div className="space-y-6">
-      <div className="grid gap-3 sm:grid-cols-3">
-        <Stat label="Aktif şantiye" value={String(active.length)} />
-        <Stat label="Bu ay imalat tutarı" value={formatTL(monthTotal)} hint="Sözleşme birim fiyatıyla, KDV hariç" />
-        <Stat label="Toplam şantiye" value={String(sites?.length ?? 0)} />
+    <div className="mx-auto max-w-3xl space-y-5">
+      <Heading />
+      <SitePicker sites={sites ?? []} siteId={site.id} />
+
+      {hazir && (
+        <p role="status" className="flex items-center gap-2 rounded-xl bg-green-50 p-3 text-sm text-green-800 dark:bg-green-950 dark:text-green-300">
+          <PartyPopper className="size-5 shrink-0" aria-hidden />
+          Kurulum tamam. Kayıt girmeye başlayabilirsiniz.
+        </p>
+      )}
+
+      <div className="grid grid-cols-2 gap-3">
+        <Stat label="Bugün sefer" value={String(tripTotal)} />
+        <Stat label="Bugün taşınan" value={tons ? `${formatTrNumber(tons, 0)} t` : "—"} hint="Kapasiteye göre tahmini" />
+        {manager && <Stat label="Bugün imalat" value={formatTL(sumAmount(todayItems))} hint="KDV hariç" />}
+        {manager && <Stat label="Bu ay imalat" value={formatTL(sumAmount(monthItems))} hint="KDV hariç" />}
       </div>
 
-      {sites?.length === 0 ? (
-        <section className="card">
-          <h2 className="text-lg font-bold">Başlarken</h2>
-          <ol className="mt-3 list-decimal space-y-1 pl-5 text-sm">
-            <li>İlk şantiyenizi ekleyin.</li>
-            <li>Şantiyenin iş kalemlerini (poz, birim, birim fiyat) tanımlayın.</li>
-            <li>Araçlarınızı ekleyin ve günlük imalat/sefer girmeye başlayın.</li>
-          </ol>
-          {manager && (
-            <Link href="/santiyeler/yeni" className="btn-primary mt-4">
-              İlk şantiyeyi ekle
-            </Link>
-          )}
-        </section>
-      ) : (
-        <section>
-          <div className="mb-3 flex items-center justify-between">
-            <h2 className="text-lg font-bold">Şantiyeler</h2>
-            <Link href="/santiyeler" className="link text-sm">
-              Tümü
-            </Link>
-          </div>
-          <ul className="grid gap-3 sm:grid-cols-2">
-            {sites?.map((s) => (
-              <li key={s.id}>
-                <Link href={`/santiyeler/${s.id}`} className="card block hover:border-brand">
-                  <div className="flex items-start justify-between gap-2">
-                    <p className="font-semibold">{s.name}</p>
-                    <StatusBadge status={s.status} />
-                  </div>
-                  <p className="mt-0.5 text-sm text-muted">{[s.code, s.employer].filter(Boolean).join(" · ") || " "}</p>
-                  {s.status === "active" && (
-                    <p className="mt-3 text-sm">
-                      Bu ay: <span className="font-semibold">{formatTL(totalBySite.get(s.id))}</span>
-                    </p>
-                  )}
-                </Link>
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <Action href={`/sefer?santiye=${site.id}`} icon={Truck} label="Sefer say" primary />
+        <Action href={`/gunluk?santiye=${site.id}`} icon={ClipboardPlus} label="İmalat gir" />
+        {manager && <Action href="/giderler" icon={Receipt} label="Gider ekle" />}
+        {manager && <Action href={`/rapor?santiye=${site.id}`} icon={BarChart3} label="Rapor al" />}
+      </div>
+
+      <section className="space-y-2">
+        <h2 className="font-bold">Bugünkü seferler</h2>
+        {byVehicle.size === 0 ? (
+          <p className="card text-sm text-muted">Henüz sefer yok.</p>
+        ) : (
+          <ul className="divide-y divide-line overflow-hidden rounded-xl border border-line bg-surface">
+            {[...byVehicle]
+              .sort((a, b) => b[1] - a[1])
+              .map(([id, n]) => (
+                <li key={id} className="flex items-center justify-between px-4 py-2.5">
+                  <span className="font-medium tabular-nums">{vehicleById.get(id)?.plate ?? "—"}</span>
+                  <span className="font-bold tabular-nums">{n} sefer</span>
+                </li>
+              ))}
+          </ul>
+        )}
+      </section>
+
+      <section className="space-y-2">
+        <h2 className="font-bold">Bugünkü imalat</h2>
+        {producedToday.length === 0 ? (
+          <p className="card text-sm text-muted">Henüz imalat girilmedi.</p>
+        ) : (
+          <ul className="divide-y divide-line overflow-hidden rounded-xl border border-line bg-surface">
+            {producedToday.map((i) => (
+              <li key={i.work_item_id} className="flex items-center justify-between gap-3 px-4 py-2.5">
+                <span className="min-w-0 truncate">{i.name}</span>
+                <span className="shrink-0 font-bold tabular-nums">
+                  {formatTrNumber(Number(i.quantity))} {unitLabel(i.unit)}
+                </span>
               </li>
             ))}
           </ul>
-        </section>
-      )}
+        )}
+      </section>
+    </div>
+  );
+}
+
+function Heading() {
+  return (
+    <div>
+      <h1 className="text-2xl font-bold">{greeting()}</h1>
+      <p className="text-sm capitalize text-muted">{longDate()}</p>
     </div>
   );
 }
 
 function Stat({ label, value, hint }: { label: string; value: string; hint?: string }) {
   return (
-    <div className="card">
-      <p className="text-sm text-muted">{label}</p>
-      <p className="mt-1 text-2xl font-bold tabular-nums">{value}</p>
-      {hint && <p className="mt-1 text-xs text-muted">{hint}</p>}
+    <div className="card py-3">
+      <p className="text-xs text-muted">{label}</p>
+      <p className="mt-0.5 text-2xl font-extrabold tabular-nums">{value}</p>
+      {hint && <p className="text-[11px] text-muted">{hint}</p>}
     </div>
+  );
+}
+
+function Action({ href, icon: Icon, label, primary }: { href: string; icon: LucideIcon; label: string; primary?: boolean }) {
+  return (
+    <Link
+      href={href}
+      className={`flex min-h-20 flex-col items-center justify-center gap-1.5 rounded-xl border text-sm font-semibold ${
+        primary ? "border-brand bg-brand text-white dark:text-black" : "border-line bg-surface hover:border-brand"
+      }`}
+    >
+      <Icon className="size-7" aria-hidden />
+      {label}
+    </Link>
   );
 }

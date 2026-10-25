@@ -29,7 +29,7 @@ async function signIn(page: Page, user: { email: string; password: string }) {
 async function createTenant(page: Page, name: string) {
   await page.locator("#name").fill(name);
   await page.getByRole("button", { name: "Firmayı oluştur" }).click();
-  await page.waitForURL("**/panel");
+  await page.waitForURL("**/kurulum");
 }
 
 // SCREENSHOT_DIR verilirse önemli ekranların görüntüsü kaydedilir
@@ -47,11 +47,14 @@ async function newPage(browser: Browser) {
   return context.newPage();
 }
 
-test("K1: kayıt olur, firma oluşturur, panele düşer", async ({ page }) => {
+test("K1: kayıt olur, firma oluşturur, hızlı kuruluma düşer", async ({ page }) => {
   await signUp(page, owner);
   await createTenant(page, "Test Hafriyat Ltd. Şti.");
   await expect(page.getByText("Test Hafriyat Ltd. Şti.")).toBeVisible();
-  await expect(page.getByRole("link", { name: "İlk şantiyeyi ekle" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Hızlı kurulum" })).toBeVisible();
+  // Kurulumu atlarsa Bugün ekranı onu kuruluma çağırır
+  await page.goto("/panel");
+  await expect(page.getByRole("link", { name: "Hızlı kurulum" })).toBeVisible();
 });
 
 test("K4: boş/hatalı form Türkçe hata verir, kayıt oluşmaz", async ({ page }) => {
@@ -182,11 +185,13 @@ test("K6: saha personeli giderleri ve raporu göremez", async ({ page, browser }
   await shot(page, "panel");
   await fieldPage.goto("/panel");
   await expect(fieldPage.getByText("Test Hafriyat Ltd. Şti.")).toBeVisible();
-  const nav = fieldPage.getByRole("navigation");
-  await expect(nav.getByRole("link", { name: "Günlük giriş" })).toBeVisible();
-  await expect(nav.getByRole("link", { name: "Giderler" })).toHaveCount(0);
-  await expect(nav.getByRole("link", { name: "Rapor" })).toHaveCount(0);
-  await expect(nav.getByRole("link", { name: "Kullanıcılar" })).toHaveCount(0);
+  const nav = fieldPage.getByRole("navigation", { name: "Ana menü" });
+  await expect(nav.getByRole("link", { name: "Sefer" })).toBeVisible();
+  await fieldPage.goto("/menu");
+  await expect(fieldPage.getByRole("link", { name: "Sefer sayacı" })).toBeVisible();
+  for (const hidden of ["Giderler", "Rapor", "Kullanıcılar"]) {
+    await expect(fieldPage.getByRole("link", { name: hidden })).toHaveCount(0);
+  }
 
   await fieldPage.goto("/giderler");
   await fieldPage.waitForURL("**/panel");
@@ -203,6 +208,47 @@ test("K6: saha personeli giderleri ve raporu göremez", async ({ page, browser }
   await expect(fieldPage.getByText("İmalat (3)")).toBeVisible();
   await expect(fieldPage.getByRole("button", { name: "Sil" })).toHaveCount(1);
   await fieldPage.context().close();
+});
+
+test("K9: hızlı kurulum ve tek dokunuşla sefer sayacı", async ({ page }) => {
+  await signIn(page, owner);
+  await page.goto("/kurulum");
+  await page.locator("#site_name").fill("Köy Yolu Stabilize");
+  await page.locator("#vehicles").fill("35 KY 101, Kamyon, 20\n35 KY 102, Kamyon, 18,5\n06 ABC 123");
+  await page.getByRole("button", { name: "Kurulumu bitir" }).click();
+  await page.waitForURL("**/sefer?hazir=1");
+  await expectNoHorizontalScroll(page);
+  await expect(page.locator("select").first()).toHaveValue(/.+/);
+
+  const plus = page.getByRole("button", { name: "35 KY 101 +1 sefer" });
+  for (let i = 0; i < 3; i++) {
+    await plus.click();
+    await expect(page.getByLabel(`${i + 1} sefer`).first()).toBeVisible();
+  }
+  await expect(page.getByText("35 KY 101: sefer kaydedildi")).toBeVisible();
+  page.once("dialog", (d) => d.accept());
+  await page.getByRole("button", { name: "35 KY 101 son seferi geri al" }).click();
+  await expect(page.getByText("son sefer geri alındı")).toBeVisible();
+  await expectNoHorizontalScroll(page);
+  // Kartlar ekrana sığmalı (yatay kaydırma olmasa bile taşma olabilir)
+  for (const box of await page.locator("main li.card").evaluateAll((els) => els.map((e) => e.getBoundingClientRect().right))) {
+    expect(box).toBeLessThanOrEqual(390);
+  }
+  await shot(page, "sefer-sayaci");
+
+  // Sayfa yenilenince sunucudaki sayı korunur; 20 t kapasite × 2 sefer = 40 t
+  await page.reload();
+  await expect(page.getByLabel("2 sefer")).toBeVisible();
+  await expect(page.getByText("40", { exact: true })).toBeVisible();
+
+  // Mevcut plaka (06 ABC 123) ikinci kez eklenmez; hazır iş kalemleri şantiyeye eklenir
+  await page.goto("/araclar");
+  await expect(page.getByText("06 ABC 123", { exact: true })).toHaveCount(1);
+  await page.goto("/panel");
+  await expect(page.getByText("Bugün sefer")).toBeVisible();
+  await shot(page, "bugun");
+  await page.goto("/gunluk");
+  await expect(page.locator("#pr-work_item_id option", { hasText: "Stabilize (alt temel) serme" })).toHaveCount(1);
 });
 
 test("K8: başka firma hiçbir veriyi göremez", async ({ browser }) => {
