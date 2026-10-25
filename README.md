@@ -5,13 +5,17 @@ gider ve dönem raporu takip uygulaması.
 
 **Canlı adres:** https://hafriyol.vercel.app (Vercel, Frankfurt). Bu dala yapılan her gönderim otomatik yayınlanır.
 
-**Durum:** Aşama 2 tamam. Öne çıkanlar:
+**Durum:** Aşama 3 tamam. Veritabanı Supabase'te (`hafriyol` projesi, Frankfurt). Öne çıkanlar:
 
-- Tek dokunuşla sefer sayacı, şişirilmiş sefer uyarısı (güzergâh çevrim süresine göre)
+- Tek dokunuşla sefer sayacı; **internet yokken de çalışır** (telefonda bekler, bağlantı gelince gönderilir)
+- Şişirilmiş sefer uyarısı (güzergâh çevrim süresine göre günlük azami sefer)
 - İş makinesi saati ve mazot, yakıt normu aşımı uyarısı
+- **Taşeron / kiralık araç hakedişi** (sefer × güzergâh ücreti, saat × saatlik ücret, Excel)
+- Kantar fişi, saha ve hasar **fotoğrafları** (telefonda küçültülüp yüklenir, firmaya özel)
 - WhatsApp'a tek dokunuşla gün sonu raporu (para tutarı içermez)
 - Bir dakikalık kurulum (hazır hafriyat/yol iş kalemleri, plakaları alt alta yazma)
-- Dönem raporu, Excel ve PDF (makineler dahil) Veritabanı Supabase'te (`hafriyol` projesi, Frankfurt).
+- Dönem raporu, Excel ve PDF (makineler dahil)
+- Telefona uygulama gibi kurulur (Ana ekrana ekle)
 
 - Mimari plan, ekranlar, riskler, kabul testleri: [`docs/01-mimari-plan.md`](docs/01-mimari-plan.md)
 - Veritabanı şeması (taslak): [`supabase/migrations/`](supabase/migrations/)
@@ -51,11 +55,13 @@ Bu yapılmazsa kayıttan sonra gelen e-posta doğrulama bağlantısı uygulamaya
 ```
 src/app/(auth)/        giriş, kayıt, çıkış
 src/app/firma-olustur/ ilk firma
-src/app/(app)/         oturum gerektiren sayfalar: panel, günlük giriş, kayıtlar,
-                       giderler, rapor (Excel/PDF), şantiyeler (iş kalemi, güzergâh), araçlar
+src/app/(app)/         oturum gerektiren sayfalar: Bugün, sefer sayacı, kayıt gir,
+                       makine/mazot, fotoğraflar, kayıtlar, giderler, rapor (Excel/PDF),
+                       taşeron hakedişi, şantiyeler, araçlar, kullanıcılar, hızlı kurulum
 src/lib/               Supabase bağlantısı, doğrulama kuralları, Türkçe sayı,
                        kuruş hesabı, biçimlendirme
 assets/fonts/          PDF'e gömülen Noto Sans (SIL Open Font License, OFL.txt)
+public/sw.js           internetsiz çalışma (service worker); simgeler public/icons
 supabase/              veritabanı şeması ve testleri
 tests/                 birim testleri
 ```
@@ -66,8 +72,9 @@ Supabase'in yerel bir kopyası (PostgreSQL + Supabase Auth + PostgREST) Docker o
 uygulama ona bağlanır ve kabul testleri telefon ekran boyutunda çalışır:
 
 ```bash
+./scripts/e2e-storage-build.sh  # bir kez: fotoğraf servisi (Supabase Storage) kaynaktan derlenir
 ./scripts/e2e-stack.sh        # ilk seferde Auth ve PostgREST ikili dosyalarını indirir
-npm run test:e2e              # K1–K10 kabul testleri
+npm run test:e2e              # K1–K13 kabul testleri
 ./scripts/e2e-stack.sh stop
 ```
 

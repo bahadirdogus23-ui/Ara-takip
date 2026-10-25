@@ -53,6 +53,14 @@ export function RouteForm({ siteId, route }: { siteId: string; route?: Tables<"r
       </div>
       <NumberField
         idPrefix={p}
+        name="trip_price"
+        label="Taşerona sefer başı ücret (TL)"
+        defaultValue={num(route?.trip_price ?? null)}
+        hint="KDV hariç; taşeron hakedişi bununla hesaplanır"
+        state={state}
+      />
+      <NumberField
+        idPrefix={p}
         name="cycle_minutes"
         label="Bir seferin süresi (dakika, gidiş-dönüş)"
         defaultValue={num(route?.cycle_minutes ?? null)}

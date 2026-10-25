@@ -10,6 +10,8 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import Link from "next/link";
+import { PhotoGrid } from "@/components/photo-grid";
+import { PhotoUploader } from "@/components/photo-uploader";
 import { ShareSummary } from "@/components/share-summary";
 import { SitePicker } from "@/components/site-picker";
 import { canManage, getContext } from "@/lib/context";
@@ -18,6 +20,7 @@ import { fuelCheck, suspiciousTrips } from "@/lib/field-checks";
 import { formatTL, isoDateTR, monthRangeTR } from "@/lib/format";
 import { toKurus, toTL } from "@/lib/money";
 import { formatTrNumber } from "@/lib/number";
+import { loadPhotos } from "@/lib/photo-load";
 import { pickSite } from "@/lib/site-pref";
 import { UNITS } from "@/lib/validation";
 
@@ -41,7 +44,7 @@ const longDate = () =>
 
 export default async function TodayPage({ searchParams }: { searchParams: Promise<{ santiye?: string; hazir?: string }> }) {
   const { santiye, hazir } = await searchParams;
-  const { supabase, tenant } = await getContext();
+  const { supabase, user, tenant } = await getContext();
   const manager = canManage(tenant.role);
 
   const { data: sites } = await supabase
@@ -135,6 +138,8 @@ export default async function TodayPage({ searchParams }: { searchParams: Promis
     const m = machineByVehicle.get(l.vehicle_id) ?? { hours: 0, fuel: 0 };
     machineByVehicle.set(l.vehicle_id, { hours: m.hours + Number(l.hours ?? 0), fuel: m.fuel + Number(l.fuel_liters ?? 0) });
   }
+  const photos = await loadPhotos(supabase, { siteId: site.id, from: today, to: today }, (by) => manager || by === user.id, 12);
+
   const summary = buildDailySummary({
     tenantName: tenant.name,
     siteName: site.name,
@@ -225,6 +230,14 @@ export default async function TodayPage({ searchParams }: { searchParams: Promis
             ))}
           </ul>
         )}
+      </section>
+
+      <section className="space-y-2">
+        <h2 className="font-bold">Bugünkü fotoğraflar</h2>
+        <div className="card">
+          <PhotoUploader tenantId={tenant.id} siteId={site.id} date={today} />
+        </div>
+        {photos.length > 0 && <PhotoGrid photos={photos} />}
       </section>
 
       <section className="card space-y-3">

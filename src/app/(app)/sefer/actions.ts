@@ -6,24 +6,41 @@ import { canManage, getContext } from "@/lib/context";
 import { dbErrorMessage } from "@/lib/errors";
 import { isoDateTR } from "@/lib/format";
 
+// Çevrimdışı kuyruktan gelen eski tarihli seferler: ileri tarih olamaz, en fazla 7 gün geriye
+function isAllowedTapDate(date: string): boolean {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return false;
+  const today = isoDateTR();
+  const oldest = new Date(`${today}T00:00:00Z`);
+  oldest.setUTCDate(oldest.getUTCDate() - 7);
+  return date <= today && date >= oldest.toISOString().slice(0, 10);
+}
+
 export type TapResult = { ok: true } | { ok: false; error: string };
 
 const PATHS = ["/sefer", "/panel", "/kayitlar", "/gunluk"];
 
 // Tek dokunuş = bir sefer kaydı (saat damgalı). requestId, zayıf internette
 // tekrar gönderilen dokunuşun ikinci kez sayılmasını engeller.
-export async function tapTrip(input: { siteId: string; vehicleId: string; routeId: string | null; requestId: string }): Promise<TapResult> {
+export async function tapTrip(input: {
+  siteId: string;
+  vehicleId: string;
+  routeId: string | null;
+  requestId: string;
+  entryDate?: string; // internet yokken girilip sonra gönderilen seferin günü
+}): Promise<TapResult> {
   const { siteId, vehicleId, routeId, requestId } = input;
   if (![siteId, vehicleId, requestId].every(isUuid) || (routeId !== null && !isUuid(routeId))) {
     return { ok: false, error: "Geçersiz istek" };
   }
+  const entryDate = input.entryDate ?? isoDateTR();
+  if (!isAllowedTapDate(entryDate)) return { ok: false, error: "Sefer tarihi geçersiz (en fazla 7 gün önceye girilebilir)" };
   const { supabase, tenant } = await getContext();
   const { error } = await supabase.from("trip_entries").insert({
     tenant_id: tenant.id,
     site_id: siteId,
     vehicle_id: vehicleId,
     route_id: routeId,
-    entry_date: isoDateTR(),
+    entry_date: entryDate,
     trip_count: 1,
     client_request_id: requestId,
   });

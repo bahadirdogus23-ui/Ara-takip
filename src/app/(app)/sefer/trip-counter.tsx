@@ -1,8 +1,9 @@
 "use client";
 
-import { AlertTriangle, Minus, Plus, Route, Truck } from "lucide-react";
-import { useEffect, useOptimistic, useState, useTransition } from "react";
+import { AlertTriangle, CloudOff, Minus, Plus, RefreshCw, Route, Truck } from "lucide-react";
+import { useCallback, useEffect, useOptimistic, useRef, useState, useTransition } from "react";
 import { formatTrNumber } from "@/lib/number";
+import { pendingByVehicle, readQueue, withoutLastFor, writeQueue, type QueuedTap } from "@/lib/offline-queue";
 import { tapTrip, undoTrip } from "./actions";
 
 export type CounterVehicle = {
@@ -17,6 +18,7 @@ export type CounterVehicle = {
 
 type Props = {
   siteId: string;
+  today: string;
   vehicles: CounterVehicle[];
   routes: { id: string; name: string }[];
 };
@@ -25,10 +27,61 @@ const ROUTE_KEY = "hafriyol_guzergah";
 const timeNow = () =>
   new Intl.DateTimeFormat("tr-TR", { hour: "2-digit", minute: "2-digit", timeZone: "Europe/Istanbul" }).format(new Date());
 
-export function TripCounter({ siteId, vehicles, routes }: Props) {
+export function TripCounter({ siteId, today, vehicles, routes }: Props) {
   const [routeId, setRouteId] = useState<string>("");
   const [message, setMessage] = useState<{ text: string; error?: boolean } | null>(null);
   const [, startTransition] = useTransition();
+  // İnternet yokken girilen seferler (telefonda bekler)
+  const [queue, setQueue] = useState<QueuedTap[]>([]);
+  const [online, setOnline] = useState(true);
+  const flushing = useRef(false);
+
+  const enqueue = useCallback((t: QueuedTap) => {
+    const next = [...readQueue(), t];
+    writeQueue(next);
+    setQueue(next);
+  }, []);
+
+  // Bekleyenleri sırayla gönder; ağ hatasında dur, sonra tekrar denenir
+  const flush = useCallback(async () => {
+    if (flushing.current) return;
+    flushing.current = true;
+    let sent = 0;
+    try {
+      for (const t of readQueue()) {
+        let res;
+        try {
+          res = await tapTrip(t);
+        } catch {
+          break;
+        }
+        writeQueue(readQueue().filter((q) => q.requestId !== t.requestId));
+        if (res.ok) sent++;
+        else setMessage({ text: res.error, error: true });
+      }
+    } finally {
+      flushing.current = false;
+      setQueue(readQueue());
+      if (sent) setMessage({ text: `İnternet geldi: bekleyen ${sent} sefer gönderildi` });
+    }
+  }, []);
+
+  useEffect(() => {
+    setQueue(readQueue());
+    setOnline(navigator.onLine);
+    if (navigator.onLine) void flush();
+    const up = () => {
+      setOnline(true);
+      void flush();
+    };
+    const down = () => setOnline(false);
+    window.addEventListener("online", up);
+    window.addEventListener("offline", down);
+    return () => {
+      window.removeEventListener("online", up);
+      window.removeEventListener("offline", down);
+    };
+  }, [flush]);
 
   // Dokunuş sunucuya ulaşmadan sayı hemen artar; hata olursa eski hâline döner
   const [shown, adjust] = useOptimistic(vehicles, (state, change: { id: string; delta: number }) =>
@@ -56,16 +109,46 @@ export function TripCounter({ siteId, vehicles, routes }: Props) {
 
   function tap(v: CounterVehicle) {
     navigator.vibrate?.(25);
-    const requestId = crypto.randomUUID();
+    const item: QueuedTap = {
+      siteId,
+      vehicleId: v.id,
+      routeId: routeId || null,
+      requestId: crypto.randomUUID(),
+      entryDate: today,
+      at: Date.now(),
+    };
+    if (!navigator.onLine) {
+      enqueue(item);
+      setMessage({ text: `${v.plate}: internet yok, sefer telefona kaydedildi` });
+      return;
+    }
     startTransition(async () => {
       adjust({ id: v.id, delta: 1 });
-      const res = await tapTrip({ siteId, vehicleId: v.id, routeId: routeId || null, requestId });
-      setMessage(res.ok ? { text: `${v.plate}: sefer kaydedildi` } : { text: res.error, error: true });
+      try {
+        const res = await tapTrip(item);
+        setMessage(res.ok ? { text: `${v.plate}: sefer kaydedildi` } : { text: res.error, error: true });
+      } catch {
+        // Bağlantı koptu: kaybolmasın, kuyruğa al
+        enqueue(item);
+        setMessage({ text: `${v.plate}: bağlantı yok, sefer telefona kaydedildi` });
+      }
     });
   }
 
   function undo(v: CounterVehicle) {
     if (!confirm(`${v.plate} için son sefer geri alınsın mı?`)) return;
+    // Henüz gönderilmemiş sefer varsa önce o geri alınır
+    const local = withoutLastFor(readQueue(), siteId, v.id);
+    if (local.removed) {
+      writeQueue(local.queue);
+      setQueue(local.queue);
+      setMessage({ text: `${v.plate}: son sefer geri alındı` });
+      return;
+    }
+    if (!navigator.onLine) {
+      setMessage({ text: "İnternet yokken gönderilmiş seferler geri alınamaz", error: true });
+      return;
+    }
     startTransition(async () => {
       adjust({ id: v.id, delta: -1 });
       const res = await undoTrip({ siteId, vehicleId: v.id });
@@ -73,8 +156,12 @@ export function TripCounter({ siteId, vehicles, routes }: Props) {
     });
   }
 
-  const total = shown.reduce((s, v) => s + v.trips, 0);
-  const estTon = shown.reduce((s, v) => s + (v.capacityTon ? v.capacityTon * v.trips : 0), 0);
+  // Gösterilen sayı = sunucudaki + telefonda bekleyen
+  const pending = pendingByVehicle(queue, siteId, today);
+  const display = shown.map((v) => ({ ...v, trips: v.trips + (pending.get(v.id) ?? 0) }));
+  const waiting = queue.length;
+  const total = display.reduce((s, v) => s + v.trips, 0);
+  const estTon = display.reduce((s, v) => s + (v.capacityTon ? v.capacityTon * v.trips : 0), 0);
 
   return (
     <div className="space-y-4">
@@ -114,12 +201,28 @@ export function TripCounter({ siteId, vehicles, routes }: Props) {
         </div>
       )}
 
+      {(waiting > 0 || !online) && (
+        <div className="flex items-center gap-2 rounded-xl border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-200">
+          {online ? (
+            <RefreshCw className="size-5 shrink-0 animate-spin" aria-hidden />
+          ) : (
+            <CloudOff className="size-5 shrink-0" aria-hidden />
+          )}
+          <span>
+            {online ? "Gönderiliyor… " : "İnternet yok. "}
+            {waiting > 0
+              ? `${waiting} sefer telefonda bekliyor, bağlantı gelince otomatik gönderilecek.`
+              : "Seferler telefona kaydedilir."}
+          </span>
+        </div>
+      )}
+
       <div role="status" aria-live="polite" className="min-h-5 text-sm">
         {message && <span className={message.error ? "text-red-600" : "text-green-700 dark:text-green-400"}>{message.text}</span>}
       </div>
 
       <ul className="grid grid-cols-[minmax(0,1fr)] gap-3 sm:grid-cols-2">
-        {shown.map((v) => (
+        {display.map((v) => (
           <li key={v.id} className={`card min-w-0 p-3 ${v.warning ? "border-red-400 dark:border-red-700" : ""}`}>
             <div className="flex min-w-0 items-center gap-2">
               <div className="hidden size-11 shrink-0 items-center justify-center rounded-xl bg-brand/10 text-brand-strong min-[400px]:flex">

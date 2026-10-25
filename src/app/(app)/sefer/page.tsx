@@ -65,7 +65,7 @@ export default async function TripCounterPage({ searchParams }: { searchParams: 
       {counted.length === 0 ? (
         <Empty manager={manager} text="Aktif araç yok. Kamyonlarınızı ekleyin, burada büyük sayaçlar olarak çıksın." href="/araclar" cta="Araç ekle" />
       ) : (
-        <TripCounter siteId={site.id} vehicles={counted} routes={(routes ?? []).map((r) => ({ id: r.id, name: r.name }))} />
+        <TripCounter siteId={site.id} today={today} vehicles={counted} routes={(routes ?? []).map((r) => ({ id: r.id, name: r.name }))} />
       )}
     </div>
   );

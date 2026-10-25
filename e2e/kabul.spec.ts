@@ -310,6 +310,99 @@ test("K10: makine/mazot, şişirilmiş sefer uyarısı ve WhatsApp özeti", asyn
   await expect(page.getByRole("heading", { name: "Makineler" })).toBeVisible();
 });
 
+test("K11: internet yokken sefer telefona kaydedilir, bağlantı gelince gönderilir", async ({ page, context }) => {
+  await signIn(page, owner);
+  await page.goto("/sefer");
+  // Service worker hazır olsun ve sayfa önbelleğe girsin
+  await page.evaluate(() => navigator.serviceWorker.ready.then(() => true));
+  await page.reload();
+  await expect.poll(() => page.evaluate(() => !!navigator.serviceWorker.controller)).toBe(true);
+
+  const card = page.locator("li", { hasText: "35 KY 101" });
+  const count = async () => Number((await card.getByLabel(/^\d+ sefer$/).getAttribute("aria-label"))!.split(" ")[0]);
+  const before = await count();
+
+  await context.setOffline(true);
+  await page.getByRole("button", { name: "35 KY 101 +1 sefer" }).click();
+  await page.getByRole("button", { name: "35 KY 101 +1 sefer" }).click();
+  await expect(page.getByText("2 sefer telefonda bekliyor")).toBeVisible();
+  expect(await count()).toBe(before + 2);
+  await shot(page, "cevrimdisi");
+
+  // İnternetsizken sayfa yeniden açılsa da çalışır (önbellekten), bekleyenler korunur
+  await page.reload();
+  await expect(page.getByText("2 sefer telefonda bekliyor")).toBeVisible();
+  expect(await count()).toBe(before + 2);
+
+  await context.setOffline(false);
+  await expect(page.getByText("bekleyen 2 sefer gönderildi")).toBeVisible({ timeout: 15_000 });
+  await expect(page.getByText("telefonda bekliyor")).toHaveCount(0);
+  await page.reload();
+  expect(await count()).toBe(before + 2);
+});
+
+test("K12: taşeron hakedişi sefer ücretinden hesaplanır", async ({ page }) => {
+  await signIn(page, owner);
+  await page.goto("/araclar");
+  const truck = page.locator("li", { hasText: "35 KY 102" });
+  await truck.getByText("Düzenle").click();
+  await truck.getByLabel("Mülkiyet").selectOption("subcontractor");
+  await truck.getByLabel("Taşeron / kiralayan firma").fill("Yılmaz Nakliyat");
+  await truck.getByRole("button", { name: "Kaydet" }).click();
+  await expect(truck.getByText("Kaydedildi")).toBeVisible();
+
+  await page.goto("/santiyeler");
+  await page.getByRole("link", { name: /Köy Yolu Stabilize/ }).click();
+  const route = page.locator("li", { hasText: "Ocak → Km 2" });
+  await route.getByText("Düzenle").click();
+  await route.getByLabel("Taşerona sefer başı ücret (TL)").fill("850");
+  await route.getByRole("button", { name: "Kaydet" }).click();
+  await expect(route.getByText("Kaydedildi")).toBeVisible();
+
+  // K10'da 35 KY 102 bu güzergâhta 12 sefer yaptı: 12 × 850 = 10.200
+  await page.goto("/hakedis");
+  const card = page.locator("section", { hasText: "Yılmaz Nakliyat" });
+  await expect(card.getByText("₺10.200,00").first()).toBeVisible();
+  await expect(card.getByText("Ödemeden önce kontrol edin")).toBeVisible();
+  await expectNoHorizontalScroll(page);
+  await shot(page, "hakedis");
+
+  const excel = await page.request.get((await page.getByRole("link", { name: "Excel indir" }).getAttribute("href"))!);
+  expect(excel.status()).toBe(200);
+});
+
+test("K13: kantar fişi fotoğrafı yüklenir, görüntülenir ve silinir", async ({ page }) => {
+  await signIn(page, owner);
+  await page.goto("/fotograflar");
+  await page.getByRole("radio", { name: "Kantar fişi" }).click();
+  await page.getByLabel("Açıklama").fill("Fiş no 4512");
+  await page.locator("#photo-input").setInputFiles("public/icons/icon-512.png");
+  await expect(page.getByText("Fotoğraf eklendi")).toBeVisible({ timeout: 20_000 });
+
+  const img = page.getByRole("img", { name: "Fiş no 4512" });
+  await expect(img).toBeVisible();
+  // Görüntü gerçekten yüklenmeli (imzalı adres çalışıyor)
+  await expect.poll(() => img.evaluate((el: HTMLImageElement) => el.complete && el.naturalWidth)).toBeGreaterThan(0);
+  await expect(img).toHaveAttribute("src", /\/storage\/v1\/object\/sign\/photos\//);
+
+  // Bugün ekranında da görünür
+  await page.goto("/panel");
+  await expect(page.getByRole("img", { name: "Fiş no 4512" })).toBeVisible();
+  await expectNoHorizontalScroll(page);
+  await shot(page, "bugun-foto");
+
+  // İkinci bir fotoğraf ekle ve sil
+  await page.goto("/fotograflar");
+  await page.getByRole("radio", { name: "Hasar / arıza" }).click();
+  await page.getByLabel("Açıklama").fill("Silinecek");
+  await page.locator("#photo-input").setInputFiles("public/icons/icon-192.png");
+  await expect(page.getByRole("img", { name: "Silinecek" })).toBeVisible({ timeout: 20_000 });
+  page.once("dialog", (d) => d.accept());
+  await page.locator("li", { has: page.getByRole("img", { name: "Silinecek" }) }).getByRole("button", { name: "Sil" }).click();
+  await expect(page.getByRole("img", { name: "Silinecek" })).toHaveCount(0);
+  await expect(page.getByRole("img", { name: "Fiş no 4512" })).toBeVisible();
+});
+
 test("K8: başka firma hiçbir veriyi göremez", async ({ browser }) => {
   const page = await newPage(browser);
   await signUp(page, other);
@@ -322,6 +415,8 @@ test("K8: başka firma hiçbir veriyi göremez", async ({ browser }) => {
   await expect(page.getByText("Bu aralıkta imalat kaydı yok.")).toBeVisible();
   await page.goto("/giderler");
   await expect(page.getByText("Bu aralıkta gider yok.")).toBeVisible();
+  await page.goto("/hakedis");
+  await expect(page.getByText("Yılmaz Nakliyat")).toHaveCount(0);
 
   const siteId = siteUrl.split("/").pop()!;
   expect((await page.request.get(`/rapor/excel?santiye=${siteId}`)).status()).toBe(404);

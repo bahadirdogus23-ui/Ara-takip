@@ -1,6 +1,6 @@
-import { ChevronRight, LogOut } from "lucide-react";
+import { ChevronRight } from "lucide-react";
 import Link from "next/link";
-import { signOut } from "@/app/(auth)/actions";
+import { SignOutButton } from "@/components/sign-out-button";
 import { canManage, getContext } from "@/lib/context";
 import { MenuList } from "./menu-list";
 
@@ -16,12 +16,7 @@ export default async function MenuPage() {
         Başka bir firma ekle
         <ChevronRight className="size-5 text-muted" aria-hidden />
       </Link>
-      <form action={signOut}>
-        <button className="btn-secondary w-full gap-2 text-red-700 dark:text-red-400">
-          <LogOut className="size-5" aria-hidden />
-          Çıkış yap
-        </button>
-      </form>
+      <SignOutButton className="btn-secondary w-full gap-2 text-red-700 dark:text-red-400" label="Çıkış yap" />
     </div>
   );
 }

@@ -1,6 +1,5 @@
-import { LogOut } from "lucide-react";
 import Link from "next/link";
-import { signOut } from "@/app/(auth)/actions";
+import { SignOutButton } from "@/components/sign-out-button";
 import { ROLE_LABELS, canManage, getContext } from "@/lib/context";
 import { BottomNav, DesktopNav } from "./nav";
 import { TenantSwitcher } from "./tenant-switcher";
@@ -26,12 +25,9 @@ export default async function AppLayout({ children }: { children: React.ReactNod
               {user.email} · {ROLE_LABELS[tenant.role]}
             </p>
           </div>
-          <form action={signOut} className="hidden md:block">
-            <button className="btn-secondary min-h-9 gap-1.5 px-3 text-sm">
-              <LogOut className="size-4" aria-hidden />
-              Çıkış
-            </button>
-          </form>
+          <div className="hidden md:block">
+            <SignOutButton className="btn-secondary min-h-9 gap-1.5 px-3 text-sm" />
+          </div>
         </div>
         <DesktopNav {...access} />
       </header>

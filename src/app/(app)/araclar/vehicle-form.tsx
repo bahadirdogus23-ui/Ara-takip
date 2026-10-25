@@ -35,6 +35,24 @@ export function VehicleForm({ vehicle }: { vehicle?: Tables<"vehicles"> }) {
           state={state}
         />
       </div>
+      <div className="grid grid-cols-2 gap-3">
+        <Field
+          idPrefix={p}
+          name="contractor_name"
+          label="Taşeron / kiralayan firma"
+          defaultValue={vehicle?.contractor_name}
+          hint="Kiralık ve taşeron araçlar için; hakediş bu ada göre gruplanır"
+          state={state}
+        />
+        <NumberField
+          idPrefix={p}
+          name="hourly_rate"
+          label="Saatlik ücret (TL)"
+          defaultValue={trNum(vehicle?.hourly_rate)}
+          hint="Saatle kiralanan iş makineleri için, KDV hariç"
+          state={state}
+        />
+      </div>
       <NumberField
         idPrefix={p}
         name="fuel_norm_lph"

@@ -38,6 +38,7 @@ export default async function VehiclesPage() {
                     {v.vehicle_type} · {VEHICLE_OWNERSHIP[v.ownership as keyof typeof VEHICLE_OWNERSHIP] ?? v.ownership}
                     {v.capacity_ton !== null && ` · ${formatTrNumber(v.capacity_ton, 2)} ton`}
                     {v.fuel_norm_lph !== null && ` · norm ${formatTrNumber(v.fuel_norm_lph, 2)} L/saat`}
+                    {v.contractor_name && ` · ${v.contractor_name}`}
                   </p>
                 </div>
                 {manager && (

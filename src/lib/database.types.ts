@@ -109,6 +109,30 @@ export type Database = {
         Update: Partial<Database["public"]["Tables"]["memberships"]["Insert"]>;
         Relationships: Rel[];
       };
+      photos: {
+        Row: {
+          caption: string | null;
+          created_at: string;
+          created_by: string;
+          id: string;
+          kind: string;
+          site_id: string;
+          storage_path: string;
+          taken_on: string;
+          tenant_id: string;
+        };
+        Insert: {
+          caption?: string | null;
+          id?: string;
+          kind: string;
+          site_id: string;
+          storage_path: string;
+          taken_on: string;
+          tenant_id: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["photos"]["Insert"]>;
+        Relationships: Rel[];
+      };
       production_entries: {
         Row: {
           client_request_id: string | null;
@@ -146,9 +170,11 @@ export type Database = {
           origin: string | null;
           site_id: string;
           tenant_id: string;
+          trip_price: number | null;
         };
         Insert: {
           cycle_minutes?: number | null;
+          trip_price?: number | null;
           destination?: string | null;
           distance_km?: number | null;
           id?: string;
@@ -236,8 +262,10 @@ export type Database = {
         Row: {
           active: boolean;
           capacity_ton: number | null;
+          contractor_name: string | null;
           created_at: string;
           fuel_norm_lph: number | null;
+          hourly_rate: number | null;
           id: string;
           ownership: string;
           plate: string;
@@ -247,7 +275,9 @@ export type Database = {
         Insert: {
           active?: boolean;
           capacity_ton?: number | null;
+          contractor_name?: string | null;
           fuel_norm_lph?: number | null;
+          hourly_rate?: number | null;
           id?: string;
           ownership?: string;
           plate: string;

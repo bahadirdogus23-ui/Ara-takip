@@ -298,4 +298,26 @@ exception when check_violation then
 end $$;
 reset role;
 
+-- T17: Fotoğraflar (dosya + kayıt)
+select pg_temp.login('00000000-0000-0000-0000-0000000000a2');
+insert into storage.objects(bucket_id, name, owner_id)
+  values ('photos', :'tenant_a' || '/' || :'site_a' || '/2026-10-25/f1.jpg', '00000000-0000-0000-0000-0000000000a2');
+insert into public.photos(tenant_id, site_id, taken_on, kind, storage_path)
+  values (:'tenant_a', :'site_a', '2026-10-25', 'kantar', :'tenant_a' || '/' || :'site_a' || '/2026-10-25/f1.jpg');
+reset role;
+select pg_temp.check((select count(*) from public.photos) = 1, 'T17a Saha personeli kendi firmasına fotoğraf yükler');
+
+select pg_temp.login('00000000-0000-0000-0000-00000000000b');
+select pg_temp.check((select count(*) from storage.objects where bucket_id = 'photos') = 0, 'T17b Başka firma dosyaları göremez');
+select pg_temp.check((select count(*) from public.photos) = 0, 'T17c Başka firma fotoğraf kayıtlarını göremez');
+\set ON_ERROR_STOP off
+insert into storage.objects(bucket_id, name) values ('photos', :'tenant_a' || '/' || :'site_a' || '/2026-10-25/sizma.jpg');
+insert into storage.objects(bucket_id, name) values ('photos', 'uuid-degil/x/y.jpg');
+insert into public.photos(tenant_id, site_id, taken_on, kind, storage_path)
+  values (:'tenant_b', :'site_b', '2026-10-25', 'saha', :'tenant_a' || '/' || :'site_a' || '/2026-10-25/f1.jpg');
+\set ON_ERROR_STOP on
+reset role;
+select pg_temp.check((select count(*) from storage.objects) = 1, 'T17d Başka firmanın klasörüne ya da geçersiz yola dosya yüklenemez');
+select pg_temp.check((select count(*) from public.photos) = 1, 'T17e Kayıt başka firmanın dosya yolunu gösteremez');
+
 \echo 'TÜM VERİTABANI TESTLERİ GEÇTİ'

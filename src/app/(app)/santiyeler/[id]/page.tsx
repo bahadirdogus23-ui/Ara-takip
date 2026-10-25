@@ -135,6 +135,7 @@ export default async function SitePage({
                     <p className="text-sm text-muted">
                       {[r.origin, r.destination].filter(Boolean).join(" → ") || "—"}
                       {r.distance_km !== null && ` · ${formatTrNumber(r.distance_km, 2)} km`}
+                      {r.trip_price !== null && ` · ${formatTL(r.trip_price)}/sefer`}
                       {(() => {
                         const limit = routeLimit(r);
                         return limit && ` · ${limit.estimated ? "tahmini " : ""}en fazla ${limit.maxTrips} sefer/gün`;
