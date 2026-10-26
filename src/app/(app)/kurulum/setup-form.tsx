@@ -51,14 +51,14 @@ export function SetupForm() {
           <Step n={3} /> Kamyon ve iş makineleri
         </h2>
         <label htmlFor="vehicles" className="block text-sm text-muted">
-          Her satıra bir araç. İsterseniz virgülle türünü ve kapasitesini (ton) yazın.
+          Her satıra bir araç: plaka, tür, kapasite (ton). Kiralıksa sona &quot;kiralık&quot; ve günlük kirayı yazın.
         </label>
         <textarea
           id="vehicles"
           name="vehicles"
           rows={5}
           defaultValue={state?.values?.vehicles ?? ""}
-          placeholder={"06 ABC 123, Kamyon, 25\n06 DEF 456, Kamyon, 25\nEKS-01, Ekskavatör"}
+          placeholder={"06 ABC 123, Kamyon, 25\n06 KR 501, Kamyon, 30, kiralık 9000\nEKS-01, Ekskavatör, , kiralık 12000"}
           aria-invalid={!!vehiclesError}
           className="input min-h-32 py-2 font-mono text-sm"
         />

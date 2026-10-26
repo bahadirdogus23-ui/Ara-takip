@@ -27,6 +27,7 @@ export async function tapTrip(input: {
   routeId: string | null;
   requestId: string;
   entryDate?: string; // internet yokken girilip sonra gönderilen seferin günü
+  tonnage?: number | null; // kantar tonu (isteğe bağlı)
 }): Promise<TapResult> {
   const { siteId, vehicleId, routeId, requestId } = input;
   if (![siteId, vehicleId, requestId].every(isUuid) || (routeId !== null && !isUuid(routeId))) {
@@ -34,6 +35,10 @@ export async function tapTrip(input: {
   }
   const entryDate = input.entryDate ?? isoDateTR();
   if (!isAllowedTapDate(entryDate)) return { ok: false, error: "Sefer tarihi geçersiz (en fazla 7 gün önceye girilebilir)" };
+  const tonnage = input.tonnage ?? null;
+  if (tonnage !== null && !(Number.isFinite(tonnage) && tonnage > 0 && tonnage <= 200)) {
+    return { ok: false, error: "Ton 0 ile 200 arasında olmalı" };
+  }
   const { supabase, tenant } = await getContext();
   const { error } = await supabase.from("trip_entries").insert({
     tenant_id: tenant.id,
@@ -42,6 +47,7 @@ export async function tapTrip(input: {
     route_id: routeId,
     entry_date: entryDate,
     trip_count: 1,
+    tonnage: tonnage === null ? null : Math.round(tonnage * 1000) / 1000,
     client_request_id: requestId,
   });
   if (error && error.code !== "23505") return { ok: false, error: dbErrorMessage(error) };

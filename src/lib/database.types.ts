@@ -171,10 +171,12 @@ export type Database = {
           site_id: string;
           tenant_id: string;
           trip_price: number | null;
+          work_item_id: string | null;
         };
         Insert: {
           cycle_minutes?: number | null;
           trip_price?: number | null;
+          work_item_id?: string | null;
           destination?: string | null;
           distance_km?: number | null;
           id?: string;
@@ -264,6 +266,7 @@ export type Database = {
           capacity_ton: number | null;
           contractor_name: string | null;
           created_at: string;
+          daily_rate: number | null;
           fuel_norm_lph: number | null;
           hourly_rate: number | null;
           id: string;
@@ -276,6 +279,7 @@ export type Database = {
           active?: boolean;
           capacity_ton?: number | null;
           contractor_name?: string | null;
+          daily_rate?: number | null;
           fuel_norm_lph?: number | null;
           hourly_rate?: number | null;
           id?: string;

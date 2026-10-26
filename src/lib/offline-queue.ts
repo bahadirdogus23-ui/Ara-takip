@@ -8,6 +8,7 @@ export type QueuedTap = {
   routeId: string | null;
   requestId: string;
   entryDate: string; // seferin yapıldığı gün (gece yarısından sonra gönderilse de doğru güne yazılır)
+  tonnage?: number | null; // kantar tonu
   at: number;
 };
 
@@ -29,10 +30,21 @@ export function writeQueue(queue: QueuedTap[]) {
   } catch {}
 }
 
-// Belirli şantiye ve gün için araç başına bekleyen sefer sayısı
-export function pendingByVehicle(queue: QueuedTap[], siteId: string, date: string): Map<string, number> {
-  const m = new Map<string, number>();
-  for (const t of queue) if (t.siteId === siteId && t.entryDate === date) m.set(t.vehicleId, (m.get(t.vehicleId) ?? 0) + 1);
+// Belirli şantiye ve gün için araç başına bekleyen sefer sayısı ve kantar tonu
+export function pendingByVehicle(
+  queue: QueuedTap[],
+  siteId: string,
+  date: string,
+): Map<string, { trips: number; ton: number; untonned: number }> {
+  const m = new Map<string, { trips: number; ton: number; untonned: number }>();
+  for (const t of queue) {
+    if (t.siteId !== siteId || t.entryDate !== date) continue;
+    const cur = m.get(t.vehicleId) ?? { trips: 0, ton: 0, untonned: 0 };
+    cur.trips++;
+    if (t.tonnage) cur.ton += t.tonnage;
+    else cur.untonned++;
+    m.set(t.vehicleId, cur);
+  }
   return m;
 }
 

@@ -60,3 +60,28 @@ describe("taşeron hakedişi", () => {
     expect(yilmaz.missingPrice).toBe(false);
   });
 });
+
+describe("günlük kira", () => {
+  it("aracın çalıştığı gün sayısı × günlük kira; sefer ücreti ayrıca ödenmez", () => {
+    const r = computeContractorPayments({
+      vehicles: [
+        { id: "k1", plate: "06 KR 501", vehicle_type: "Kamyon", ownership: "rented", contractor_name: "Kaya", hourly_rate: null, daily_rate: 9000 },
+        { id: "e1", plate: "EKS-01", vehicle_type: "Ekskavatör", ownership: "rented", contractor_name: "Kaya", hourly_rate: 1500, daily_rate: null },
+      ],
+      routes: [{ id: "r1", name: "Ocak", trip_price: 900, cycle_minutes: null, distance_km: null }],
+      trips: [
+        { vehicle_id: "k1", route_id: "r1", entry_date: "2026-10-01", trip_count: 5 },
+        { vehicle_id: "k1", route_id: "r1", entry_date: "2026-10-01", trip_count: 2 },
+        { vehicle_id: "k1", route_id: "r1", entry_date: "2026-10-03", trip_count: 4 },
+      ],
+      machineLogs: [{ vehicle_id: "e1", hours: 9, log_date: "2026-10-01" }],
+    });
+    const kaya = r.contractors[0];
+    // 2 gün × 9.000 = 18.000 ; 9 saat × 1.500 = 13.500
+    expect(kaya.lines).toEqual([
+      { plate: "06 KR 501", description: "Günlük kira", unit: "gün", quantity: 2, unitPrice: 9000, amount: 18000 },
+      { plate: "EKS-01", description: "Makine çalışması", unit: "saat", quantity: 9, unitPrice: 1500, amount: 13500 },
+    ]);
+    expect(kaya.total).toBe(31500);
+  });
+});

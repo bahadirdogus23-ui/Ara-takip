@@ -55,6 +55,14 @@ export function VehicleForm({ vehicle }: { vehicle?: Tables<"vehicles"> }) {
       </div>
       <NumberField
         idPrefix={p}
+        name="daily_rate"
+        label="Günlük kira (TL)"
+        defaultValue={trNum(vehicle?.daily_rate)}
+        hint="Günlük kiralanan araçlar için, KDV hariç. Aracın sefer ya da makine kaydı olan her gün sayılır; girilirse sefer ve saat ücreti ayrıca ödenmez."
+        state={state}
+      />
+      <NumberField
+        idPrefix={p}
         name="fuel_norm_lph"
         label="Yakıt normu (litre/saat)"
         defaultValue={trNum(vehicle?.fuel_norm_lph)}

@@ -112,6 +112,11 @@ export const routeSchema = z.object({
   distance_km: optionalTrNumber({ label: "Mesafe", decimals: 2, max: 999_999 }),
   cycle_minutes: optionalTrNumber({ label: "Çevrim süresi", decimals: 0, min: 0, minExclusive: true, max: 1440 }),
   trip_price: optionalTrNumber({ label: "Sefer ücreti", decimals: 2, max: 9_999_999 }),
+  work_item_id: z
+    .string()
+    .optional()
+    .transform((v) => (v ? v : null))
+    .refine((v) => v === null || /^[0-9a-f-]{36}$/i.test(v), "İş kalemi seçin"),
 });
 
 export const VEHICLE_OWNERSHIP = {
@@ -140,6 +145,7 @@ export const vehicleSchema = z.object({
   fuel_norm_lph: optionalTrNumber({ label: "Yakıt normu", decimals: 2, min: 0, minExclusive: true, max: 9_999 }),
   contractor_name: optionalText(200).optional().transform((v) => v ?? null),
   hourly_rate: optionalTrNumber({ label: "Saatlik ücret", decimals: 2, max: 9_999_999 }),
+  daily_rate: optionalTrNumber({ label: "Günlük kira", decimals: 2, max: 9_999_999 }),
   active: z.string().optional().transform((v) => v === "on" || v === "true"),
 });
 

@@ -39,3 +39,24 @@ describe("dönem raporu", () => {
     expect(r.expenses.map((e) => e.label)).toEqual(["Mazot / yakıt", "İşçilik"]);
   });
 });
+
+import { summarizeReport } from "@/lib/report";
+
+describe("dönem raporunda araç kirası", () => {
+  it("kiralık/taşeron araç maliyetini gidere ve tutar − gider farkına katar", () => {
+    const base = sampleReport();
+    const r = summarizeReport({
+      site: base.site,
+      tenantName: base.tenantName,
+      from: base.from,
+      to: base.to,
+      production: [],
+      expenses: [{ category: "fuel", amount: 18500, vat_amount: 3700, total: 22200, entry_count: 1 }],
+      trips: [],
+      vehicles: [],
+      vehicleCosts: { total: 23400, lines: 3 },
+    });
+    expect(r.expenses.at(-1)).toMatchObject({ label: "Araç kirası / taşeron (otomatik)", amount: 23400, vat: 0 });
+    expect(r.totals).toMatchObject({ expenseNet: 41900, expenseVat: 3700, difference: -41900, generalExpense: 41900 });
+  });
+});

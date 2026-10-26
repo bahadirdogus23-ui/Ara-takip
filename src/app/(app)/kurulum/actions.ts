@@ -31,10 +31,20 @@ export async function quickSetup(_prev: FormState, formData: FormData): Promise<
   if (error) return { error: dbErrorMessage(error), values };
 
   if (items.length) {
-    const { error: e } = await supabase
+    const { data: created, error: e } = await supabase
       .from("work_items")
-      .insert(items.map((t) => ({ tenant_id: tenant.id, site_id: site.id, name: t.name, unit: t.unit })));
+      .insert(items.map((t) => ({ tenant_id: tenant.id, site_id: site.id, name: t.name, unit: t.unit })))
+      .select("id, unit");
     if (e) return { error: `Şantiye açıldı ama iş kalemleri eklenemedi: ${dbErrorMessage(e)}`, values };
+
+    // Nakliye işi seçildiyse hazır bir güzergâh: bu güzergâhtaki seferler nakliye imalatı sayılır
+    const haul = created?.find((c) => c.unit === "sefer");
+    if (haul) {
+      const { error: re } = await supabase
+        .from("routes")
+        .insert({ tenant_id: tenant.id, site_id: site.id, name: "Ana güzergâh", work_item_id: haul.id });
+      if (re) return { error: `Şantiye açıldı ama güzergâh eklenemedi: ${dbErrorMessage(re)}`, values };
+    }
   }
 
   // Araçlar firma geneli; zaten kayıtlı plakalar atlanır

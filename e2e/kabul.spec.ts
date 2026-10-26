@@ -34,38 +34,60 @@ async function createTenant(page: Page, name: string) {
 
 // SCREENSHOT_DIR verilirse önemli ekranların görüntüsü kaydedilir
 async function shot(page: Page, name: string) {
-  if (process.env.SCREENSHOT_DIR) await page.screenshot({ path: `${process.env.SCREENSHOT_DIR}/${name}.png`, fullPage: true });
+  if (process.env.SCREENSHOT_DIR)
+    await page.screenshot({
+      path: `${process.env.SCREENSHOT_DIR}/${name}.png`,
+      fullPage: true,
+    });
 }
 
 async function expectNoHorizontalScroll(page: Page) {
-  const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
-  expect(overflow, `${page.url()} yatay kaydırma yapıyor`).toBeLessThanOrEqual(0);
+  const overflow = await page.evaluate(
+    () => document.documentElement.scrollWidth - window.innerWidth,
+  );
+  expect(overflow, `${page.url()} yatay kaydırma yapıyor`).toBeLessThanOrEqual(
+    0,
+  );
 }
 
 async function newPage(browser: Browser) {
-  const context = await browser.newContext({ viewport: { width: 390, height: 844 }, locale: "tr-TR", timezoneId: "Europe/Istanbul" });
+  const context = await browser.newContext({
+    viewport: { width: 390, height: 844 },
+    locale: "tr-TR",
+    timezoneId: "Europe/Istanbul",
+  });
   return context.newPage();
 }
 
-test("K1: kayıt olur, firma oluşturur, hızlı kuruluma düşer", async ({ page }) => {
+test("K1: kayıt olur, firma oluşturur, hızlı kuruluma düşer", async ({
+  page,
+}) => {
   await signUp(page, owner);
   await createTenant(page, "Test Hafriyat Ltd. Şti.");
   await expect(page.getByText("Test Hafriyat Ltd. Şti.")).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Hızlı kurulum" })).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Hızlı kurulum" }),
+  ).toBeVisible();
   // Kurulumu atlarsa Bugün ekranı onu kuruluma çağırır
   await page.goto("/panel");
   await expect(page.getByRole("link", { name: "Hızlı kurulum" })).toBeVisible();
 });
 
-test("K4: boş/hatalı form Türkçe hata verir, kayıt oluşmaz", async ({ page }) => {
+test("K4: boş/hatalı form Türkçe hata verir, kayıt oluşmaz", async ({
+  page,
+}) => {
   await signIn(page, owner);
   await page.goto("/santiyeler/yeni");
   await page.locator("#name").fill("a");
   await page.locator("#start_date").fill("2026-05-02");
   await page.locator("#end_date").fill("2026-05-01");
   await page.getByRole("button", { name: "Şantiyeyi ekle" }).click();
-  await expect(page.getByText("Şantiye adı en az 2 karakter olmalı")).toBeVisible();
-  await expect(page.getByText("Bitiş tarihi başlangıçtan önce olamaz")).toBeVisible();
+  await expect(
+    page.getByText("Şantiye adı en az 2 karakter olmalı"),
+  ).toBeVisible();
+  await expect(
+    page.getByText("Bitiş tarihi başlangıçtan önce olamaz"),
+  ).toBeVisible();
   await page.goto("/santiyeler");
   await expect(page.getByText("Henüz şantiye yok.")).toBeVisible();
 });
@@ -102,13 +124,17 @@ test("K2: şantiye, iki iş kalemi ve bir araç tanımlar", async ({ page }) => 
   await expect(page.getByText("06 ABC 123")).toBeVisible();
 });
 
-test("K3 + K5: telefonda hızlı imalat girişi, çift tıklamada tek kayıt", async ({ page }) => {
+test("K3 + K5: telefonda hızlı imalat girişi, çift tıklamada tek kayıt", async ({
+  page,
+}) => {
   await signIn(page, owner);
   await page.goto("/gunluk");
   await expectNoHorizontalScroll(page);
 
   const started = Date.now();
-  await page.locator("#pr-work_item_id").selectOption({ label: "15.150.1001 · Kazı (yumuşak toprak) (m³)" });
+  await page
+    .locator("#pr-work_item_id")
+    .selectOption({ label: "15.150.1001 · Kazı (yumuşak toprak) (m³)" });
   await page.locator("#pr-quantity").fill("120,5");
   await page.getByRole("button", { name: "İmalatı kaydet" }).dblclick();
   await expect(page.getByText("İmalat kaydedildi")).toBeVisible();
@@ -125,10 +151,17 @@ test("K3 + K5: telefonda hızlı imalat girişi, çift tıklamada tek kayıt", a
   await page.locator("#tr-trip_count").fill("12");
   await page.locator("#tr-tonnage").fill("290");
   await page.getByRole("button", { name: "Seferi kaydet" }).click();
-  await expect(page.getByText("12 sefer, 1 kayıt")).toBeVisible();
+  await expect(page.getByText("Sefer (12 sefer)")).toBeVisible();
   await shot(page, "gunluk-giris");
 
-  for (const path of ["/panel", "/kayitlar", "/giderler", "/rapor", "/araclar", siteUrl]) {
+  for (const path of [
+    "/panel",
+    "/kayitlar",
+    "/giderler",
+    "/rapor",
+    "/araclar",
+    siteUrl,
+  ]) {
     await page.goto(path);
     await expectNoHorizontalScroll(page);
   }
@@ -143,7 +176,8 @@ test("K7: dönem raporu ve Excel toplamları doğru", async ({ page }) => {
   ]) {
     await page.locator("#ex-category").selectOption(category);
     await page.locator("#ex-amount").fill(amount);
-    if (item) await page.locator("#ex-work_item_id").selectOption({ label: item });
+    if (item)
+      await page.locator("#ex-work_item_id").selectOption({ label: item });
     await page.getByRole("button", { name: "Gideri kaydet" }).click();
     await expect(page.getByText("Gider kaydedildi")).toBeVisible();
   }
@@ -157,7 +191,9 @@ test("K7: dönem raporu ve Excel toplamları doğru", async ({ page }) => {
   await expect(page.getByText("₺12.865,44")).toBeVisible();
   await shot(page, "rapor");
 
-  const href = await page.getByRole("link", { name: "Excel indir" }).getAttribute("href");
+  const href = await page
+    .getByRole("link", { name: "Excel indir" })
+    .getAttribute("href");
   const res = await page.request.get(href!);
   expect(res.status()).toBe(200);
   const wb = new ExcelJS.Workbook();
@@ -165,12 +201,17 @@ test("K7: dönem raporu ve Excel toplamları doğru", async ({ page }) => {
   expect(wb.getWorksheet("Özet")!.getCell("B7").value).toBe(17100);
   expect(wb.getWorksheet("İmalat")!.getCell("F2").value).toBe(17100);
 
-  const pdf = await page.request.get((await page.getByRole("link", { name: "PDF indir" }).getAttribute("href"))!);
+  const pdf = await page.request.get(
+    (await page.getByRole("link", { name: "PDF indir" }).getAttribute("href"))!,
+  );
   expect(pdf.status()).toBe(200);
   expect((await pdf.body()).subarray(0, 5).toString()).toBe("%PDF-");
 });
 
-test("K6: saha personeli giderleri ve raporu göremez", async ({ page, browser }) => {
+test("K6: saha personeli giderleri ve raporu göremez", async ({
+  page,
+  browser,
+}) => {
   const fieldPage = await newPage(browser);
   await signUp(fieldPage, field);
 
@@ -184,11 +225,15 @@ test("K6: saha personeli giderleri ve raporu göremez", async ({ page, browser }
   await page.goto("/panel");
   await shot(page, "panel");
   await fieldPage.goto("/panel");
-  await expect(fieldPage.getByRole("banner").getByText("Test Hafriyat Ltd. Şti.")).toBeVisible();
+  await expect(
+    fieldPage.getByRole("banner").getByText("Test Hafriyat Ltd. Şti."),
+  ).toBeVisible();
   const nav = fieldPage.getByRole("navigation", { name: "Ana menü" });
   await expect(nav.getByRole("link", { name: "Sefer" })).toBeVisible();
   await fieldPage.goto("/menu");
-  await expect(fieldPage.getByRole("link", { name: "Sefer sayacı" })).toBeVisible();
+  await expect(
+    fieldPage.getByRole("link", { name: "Sefer sayacı" }),
+  ).toBeVisible();
   for (const hidden of ["Giderler", "Rapor", "Kullanıcılar"]) {
     await expect(fieldPage.getByRole("link", { name: hidden })).toHaveCount(0);
   }
@@ -196,7 +241,9 @@ test("K6: saha personeli giderleri ve raporu göremez", async ({ page, browser }
   await fieldPage.goto("/giderler");
   await fieldPage.waitForURL("**/panel");
   const siteId = siteUrl.split("/").pop()!;
-  expect((await fieldPage.request.get(`/rapor/excel?santiye=${siteId}`)).status()).toBe(403);
+  expect(
+    (await fieldPage.request.get(`/rapor/excel?santiye=${siteId}`)).status(),
+  ).toBe(403);
 
   // Saha personeli imalat girebilir, ama sahibin kaydını silemez
   await fieldPage.goto("/gunluk");
@@ -214,7 +261,9 @@ test("K9: hızlı kurulum ve tek dokunuşla sefer sayacı", async ({ page }) => 
   await signIn(page, owner);
   await page.goto("/kurulum");
   await page.locator("#site_name").fill("Köy Yolu Stabilize");
-  await page.locator("#vehicles").fill("35 KY 101, Kamyon, 20\n35 KY 102, Kamyon, 18,5\n06 ABC 123");
+  await page
+    .locator("#vehicles")
+    .fill("35 KY 101, Kamyon, 20\n35 KY 102, Kamyon, 18,5\n06 ABC 123");
   await page.getByRole("button", { name: "Kurulumu bitir" }).click();
   await page.waitForURL("**/sefer?hazir=1");
   await expectNoHorizontalScroll(page);
@@ -227,11 +276,15 @@ test("K9: hızlı kurulum ve tek dokunuşla sefer sayacı", async ({ page }) => 
   }
   await expect(page.getByText("35 KY 101: sefer kaydedildi")).toBeVisible();
   page.once("dialog", (d) => d.accept());
-  await page.getByRole("button", { name: "35 KY 101 son seferi geri al" }).click();
+  await page
+    .getByRole("button", { name: "35 KY 101 son seferi geri al" })
+    .click();
   await expect(page.getByText("son sefer geri alındı")).toBeVisible();
   await expectNoHorizontalScroll(page);
   // Kartlar ekrana sığmalı (yatay kaydırma olmasa bile taşma olabilir)
-  for (const box of await page.locator("main li.card").evaluateAll((els) => els.map((e) => e.getBoundingClientRect().right))) {
+  for (const box of await page
+    .locator("main li.card")
+    .evaluateAll((els) => els.map((e) => e.getBoundingClientRect().right))) {
     expect(box).toBeLessThanOrEqual(390);
   }
   await shot(page, "sefer-sayaci");
@@ -248,10 +301,16 @@ test("K9: hızlı kurulum ve tek dokunuşla sefer sayacı", async ({ page }) => 
   await expect(page.getByText("Bugün sefer")).toBeVisible();
   await shot(page, "bugun");
   await page.goto("/gunluk");
-  await expect(page.locator("#pr-work_item_id option", { hasText: "Stabilize (alt temel) serme" })).toHaveCount(1);
+  await expect(
+    page.locator("#pr-work_item_id option", {
+      hasText: "Stabilize (alt temel) serme",
+    }),
+  ).toHaveCount(1);
 });
 
-test("K10: makine/mazot, şişirilmiş sefer uyarısı ve WhatsApp özeti", async ({ page }) => {
+test("K10: makine/mazot, şişirilmiş sefer uyarısı ve WhatsApp özeti", async ({
+  page,
+}) => {
   await signIn(page, owner);
 
   // Normu 15 L/saat olan bir ekskavatör
@@ -278,14 +337,20 @@ test("K10: makine/mazot, şişirilmiş sefer uyarısı ve WhatsApp özeti", asyn
     await expect(page.getByLabel(`${i} sefer`).first()).toBeVisible();
   }
   await page.reload();
-  await expect(page.getByText(/Fazla sefer şüphesi · Ocak → Km 2: 12 sefer, en fazla 11/)).toBeVisible();
+  await expect(
+    page.getByText(/Fazla sefer şüphesi · Ocak → Km 2: 12 sefer, en fazla 11/),
+  ).toBeVisible();
   // Ekskavatör sefer yapmaz, sayaçta görünmez
-  await expect(page.getByRole("button", { name: "EKS-01 +1 sefer" })).toHaveCount(0);
+  await expect(
+    page.getByRole("button", { name: "EKS-01 +1 sefer" }),
+  ).toHaveCount(0);
   await shot(page, "sefer-uyari");
 
   // 10 saatte 190 L = 19 L/saat > 15 × 1,2
   await page.goto("/makine");
-  await page.locator("#mk-vehicle_id").selectOption({ label: "EKS-01 · Ekskavatör" });
+  await page
+    .locator("#mk-vehicle_id")
+    .selectOption({ label: "EKS-01 · Ekskavatör" });
   await page.locator("#mk-hours").fill("10");
   await page.locator("#mk-fuel_liters").fill("190");
   await page.locator("#mk-operator").fill("Ali Usta");
@@ -301,7 +366,9 @@ test("K10: makine/mazot, şişirilmiş sefer uyarısı ve WhatsApp özeti", asyn
   await expect(summary).toContainText("35 KY 102: 12 sefer");
   await expect(summary).toContainText("EKS-01: 10 saat, 190 L");
   await expect(summary).not.toContainText("₺");
-  const wa = await page.getByRole("link", { name: "WhatsApp'a gönder" }).getAttribute("href");
+  const wa = await page
+    .getByRole("link", { name: "WhatsApp'a gönder" })
+    .getAttribute("href");
   expect(wa).toMatch(/^https:\/\/wa\.me\/\?text=/);
   await expectNoHorizontalScroll(page);
   await shot(page, "bugun-uyari");
@@ -310,16 +377,26 @@ test("K10: makine/mazot, şişirilmiş sefer uyarısı ve WhatsApp özeti", asyn
   await expect(page.getByRole("heading", { name: "Makineler" })).toBeVisible();
 });
 
-test("K11: internet yokken sefer telefona kaydedilir, bağlantı gelince gönderilir", async ({ page, context }) => {
+test("K11: internet yokken sefer telefona kaydedilir, bağlantı gelince gönderilir", async ({
+  page,
+  context,
+}) => {
   await signIn(page, owner);
   await page.goto("/sefer");
   // Service worker hazır olsun ve sayfa önbelleğe girsin
   await page.evaluate(() => navigator.serviceWorker.ready.then(() => true));
   await page.reload();
-  await expect.poll(() => page.evaluate(() => !!navigator.serviceWorker.controller)).toBe(true);
+  await expect
+    .poll(() => page.evaluate(() => !!navigator.serviceWorker.controller))
+    .toBe(true);
 
   const card = page.locator("li", { hasText: "35 KY 101" });
-  const count = async () => Number((await card.getByLabel(/^\d+ sefer$/).getAttribute("aria-label"))!.split(" ")[0]);
+  const count = async () =>
+    Number(
+      (await card.getByLabel(/^\d+ sefer$/).getAttribute("aria-label"))!.split(
+        " ",
+      )[0],
+    );
   const before = await count();
 
   await context.setOffline(true);
@@ -335,7 +412,9 @@ test("K11: internet yokken sefer telefona kaydedilir, bağlantı gelince gönder
   expect(await count()).toBe(before + 2);
 
   await context.setOffline(false);
-  await expect(page.getByText("bekleyen 2 sefer gönderildi")).toBeVisible({ timeout: 15_000 });
+  await expect(page.getByText("bekleyen 2 sefer gönderildi")).toBeVisible({
+    timeout: 15_000,
+  });
   await expect(page.getByText("telefonda bekliyor")).toHaveCount(0);
   await page.reload();
   expect(await count()).toBe(before + 2);
@@ -367,23 +446,38 @@ test("K12: taşeron hakedişi sefer ücretinden hesaplanır", async ({ page }) =
   await expectNoHorizontalScroll(page);
   await shot(page, "hakedis");
 
-  const excel = await page.request.get((await page.getByRole("link", { name: "Excel indir" }).getAttribute("href"))!);
+  const excel = await page.request.get(
+    (await page
+      .getByRole("link", { name: "Excel indir" })
+      .getAttribute("href"))!,
+  );
   expect(excel.status()).toBe(200);
 });
 
-test("K13: kantar fişi fotoğrafı yüklenir, görüntülenir ve silinir", async ({ page }) => {
+test("K13: kantar fişi fotoğrafı yüklenir, görüntülenir ve silinir", async ({
+  page,
+}) => {
   await signIn(page, owner);
   await page.goto("/fotograflar");
   await page.getByRole("radio", { name: "Kantar fişi" }).click();
   await page.getByLabel("Açıklama").fill("Fiş no 4512");
   await page.locator("#photo-input").setInputFiles("public/icons/icon-512.png");
-  await expect(page.getByText("Fotoğraf eklendi")).toBeVisible({ timeout: 20_000 });
+  await expect(page.getByText("Fotoğraf eklendi")).toBeVisible({
+    timeout: 20_000,
+  });
 
   const img = page.getByRole("img", { name: "Fiş no 4512" });
   await expect(img).toBeVisible();
   // Görüntü gerçekten yüklenmeli (imzalı adres çalışıyor)
-  await expect.poll(() => img.evaluate((el: HTMLImageElement) => el.complete && el.naturalWidth)).toBeGreaterThan(0);
-  await expect(img).toHaveAttribute("src", /\/storage\/v1\/object\/sign\/photos\//);
+  await expect
+    .poll(() =>
+      img.evaluate((el: HTMLImageElement) => el.complete && el.naturalWidth),
+    )
+    .toBeGreaterThan(0);
+  await expect(img).toHaveAttribute(
+    "src",
+    /\/storage\/v1\/object\/sign\/photos\//,
+  );
 
   // Bugün ekranında da görünür
   await page.goto("/panel");
@@ -396,11 +490,129 @@ test("K13: kantar fişi fotoğrafı yüklenir, görüntülenir ve silinir", asyn
   await page.getByRole("radio", { name: "Hasar / arıza" }).click();
   await page.getByLabel("Açıklama").fill("Silinecek");
   await page.locator("#photo-input").setInputFiles("public/icons/icon-192.png");
-  await expect(page.getByRole("img", { name: "Silinecek" })).toBeVisible({ timeout: 20_000 });
+  await expect(page.getByRole("img", { name: "Silinecek" })).toBeVisible({
+    timeout: 20_000,
+  });
   page.once("dialog", (d) => d.accept());
-  await page.locator("li", { has: page.getByRole("img", { name: "Silinecek" }) }).getByRole("button", { name: "Sil" }).click();
+  await page
+    .locator("li", { has: page.getByRole("img", { name: "Silinecek" }) })
+    .getByRole("button", { name: "Sil" })
+    .click();
   await expect(page.getByRole("img", { name: "Silinecek" })).toHaveCount(0);
   await expect(page.getByRole("img", { name: "Fiş no 4512" })).toBeVisible();
+});
+
+test("K14: nakliyecinin bir günü (kullanıcı geri bildirimi)", async ({
+  browser,
+}) => {
+  test.setTimeout(180_000);
+  const page = await newPage(browser);
+  page.on("dialog", (d) => d.accept());
+  await signUp(page, {
+    email: `dogus-${run}@hafriyol.local`,
+    password: "Sifre-12345",
+  });
+  await createTenant(page, "Doğuş Hafriyat Nakliyat");
+
+  // Kurulumda kiralık kamyon ve günlük kirası doğrudan yazılır
+  await page.locator("#site_name").fill("Malatya Çevre Yolu Km 12");
+  await page
+    .locator("#vehicles")
+    .fill(
+      "44 DH 101, Kamyon, 25\n06 KR 501, Kamyon, 30, kiralık 9000\nEKS-01, Ekskavatör, , kiralık 12000",
+    );
+  await page.getByRole("button", { name: "Kurulumu bitir" }).click();
+  await page.waitForURL("**/sefer?hazir=1");
+  // Nakliye işi seçili olduğu için hazır güzergâh açıldı ve seçili
+  await expect(
+    page.getByRole("button", { name: "Ana güzergâh" }),
+  ).toHaveAttribute("aria-pressed", "true");
+
+  // Kantar tonuyla sefer: 2 sefer tonlu, 1 sefer tonsuz
+  await page.getByText("Her seferde kantar tonu gir").click();
+  for (const ton of ["24,5", "26"]) {
+    await page.getByRole("button", { name: "44 DH 101 +1 sefer" }).click();
+    const dialog = page.getByRole("dialog");
+    await dialog.locator("input").fill(ton);
+    await dialog.getByRole("button", { name: "Seferi kaydet" }).click();
+    await expect(
+      page.getByText(`44 DH 101: ${ton} t sefer kaydedildi`),
+    ).toBeVisible();
+  }
+  await page.getByRole("button", { name: "06 KR 501 +1 sefer" }).click();
+  await page
+    .getByRole("dialog")
+    .getByRole("button", { name: "Tonsuz kaydet" })
+    .click();
+  await expect(page.getByText("06 KR 501: sefer kaydedildi")).toBeVisible();
+  await page.reload();
+  await expect(
+    page.locator("li", { hasText: "44 DH 101" }).getByText("50,5 t"),
+  ).toBeVisible();
+  await shot(page, "k14-sefer-ton");
+
+  // Kiralık araç düzenleme formu kayıttan sonra hâlâ "Kiralık" göstermeli (hata düzeltmesi)
+  await page.goto("/araclar");
+  const kr = page.locator("li", { hasText: "06 KR 501" });
+  await expect(kr.getByText(/Kiralık/).first()).toBeVisible();
+  await kr.getByText("Düzenle").click();
+  await expect(kr.getByLabel("Mülkiyet")).toHaveValue("rented");
+  await kr.getByLabel("Taşeron / kiralayan firma").fill("Kaya Kiralama");
+  await kr.getByRole("button", { name: "Kaydet" }).click();
+  await expect(kr.getByText("Kaydedildi")).toBeVisible();
+  await expect(kr.getByLabel("Mülkiyet")).toHaveValue("rented");
+  await expect(kr.getByLabel("Günlük kira (TL)")).toHaveValue("9000");
+
+  // İşveren birim fiyatı: nakliye seferi 750 TL → seferler imalat tutarına dönüşür
+  await page.goto("/santiyeler");
+  await page.getByRole("link", { name: /Malatya Çevre Yolu/ }).click();
+  const haul = page
+    .locator("li", { hasText: "Hafriyat nakliyesi" })
+    .filter({ hasNotText: "seferler →" });
+  await haul.getByText("Düzenle").click();
+  await haul.getByLabel("Birim fiyat (TL)").fill("750");
+  await haul.getByRole("button", { name: "Kaydet" }).click();
+  await expect(haul.getByText("Kaydedildi")).toBeVisible();
+  await expect(page.getByText("seferler → Hafriyat nakliyesi")).toBeVisible();
+
+  // Mazot faturası
+  await page.goto("/giderler");
+  await page.locator("#ex-category").selectOption("fuel");
+  await page.locator("#ex-amount").fill("5.000");
+  await page.getByRole("button", { name: "Gideri kaydet" }).click();
+  await expect(page.getByText("Gider kaydedildi")).toBeVisible();
+  // Kiralık kamyonun bugünkü kirası (1 gün × 9.000) giderlerde kendiliğinden görünür
+  await page.goto("/giderler");
+  await expect(
+    page.getByText("Araç kirası / taşeron (otomatik)"),
+  ).toBeVisible();
+  const totals = page.locator("section", {
+    hasText: "Toplam gider (KDV hariç)",
+  });
+  await expect(totals.getByText("₺9.000,00")).toBeVisible();
+  await expect(totals.getByText("₺14.000,00")).toBeVisible();
+  await shot(page, "k14-giderler");
+
+  // Rapor: 3 sefer × 750 = 2.250 gelir; gider 5.000 + 9.000 = 14.000
+  await page.goto("/rapor");
+  await expect(page.getByText("₺2.250,00").first()).toBeVisible();
+  await expect(
+    page.getByText("Araç kirası / taşeron (otomatik)"),
+  ).toBeVisible();
+  await expect(page.getByText("₺14.000,00").first()).toBeVisible();
+  await expect(page.getByText("-₺11.750,00").first()).toBeVisible();
+  await shot(page, "k14-rapor");
+
+  // Kayıt gir: seferler kamyon başına tek satır
+  await page.goto("/gunluk");
+  await expect(page.getByText("Sefer (3 sefer)")).toBeVisible();
+  await expect(
+    page.locator("li", { hasText: "44 DH 101" }).getByText("50,5 t kantar"),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Son seferi sil" }),
+  ).toHaveCount(2);
+  await page.context().close();
 });
 
 test("K8: başka firma hiçbir veriyi göremez", async ({ browser }) => {
@@ -414,12 +626,14 @@ test("K8: başka firma hiçbir veriyi göremez", async ({ browser }) => {
   await page.goto("/kayitlar");
   await expect(page.getByText("Bu aralıkta imalat kaydı yok.")).toBeVisible();
   await page.goto("/giderler");
-  await expect(page.getByText("Bu aralıkta gider yok.")).toBeVisible();
+  await expect(page.getByText("Bu aralıkta girilmiş gider yok.")).toBeVisible();
   await page.goto("/hakedis");
   await expect(page.getByText("Yılmaz Nakliyat")).toHaveCount(0);
 
   const siteId = siteUrl.split("/").pop()!;
-  expect((await page.request.get(`/rapor/excel?santiye=${siteId}`)).status()).toBe(404);
+  expect(
+    (await page.request.get(`/rapor/excel?santiye=${siteId}`)).status(),
+  ).toBe(404);
   // Adres çubuğuna başka firmanın şantiyesini yazmak raporu açmaz, kendi (boş) verisine döner
   await page.goto(`/rapor?santiye=${siteId}`);
   await expect(page.getByText("Çevre Yolu 1. Kısım")).toHaveCount(0);

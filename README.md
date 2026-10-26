@@ -7,7 +7,9 @@ gider ve dönem raporu takip uygulaması.
 
 **Durum:** Aşama 3 tamam. Veritabanı Supabase'te (`hafriyol` projesi, Frankfurt). Öne çıkanlar:
 
-- Tek dokunuşla sefer sayacı; **internet yokken de çalışır** (telefonda bekler, bağlantı gelince gönderilir)
+- Tek dokunuşla sefer sayacı; **internet yokken de çalışır** (telefonda bekler, bağlantı gelince gönderilir); isteğe bağlı her seferde **kantar tonu**
+- Güzergâh bir iş kalemine bağlanınca seferler **kendiliğinden imalat tutarına** dönüşür (sefer × birim fiyat veya kantar tonu × birim fiyat)
+- Kiralık / taşeron araçların **günlük, saatlik veya sefer başı kirası giderlere ve rapora kendiliğinden** yazılır
 - Şişirilmiş sefer uyarısı (güzergâh çevrim süresine göre günlük azami sefer)
 - İş makinesi saati ve mazot, yakıt normu aşımı uyarısı
 - **Taşeron / kiralık araç hakedişi** (sefer × güzergâh ücreti, saat × saatlik ücret, Excel)
@@ -74,7 +76,7 @@ uygulama ona bağlanır ve kabul testleri telefon ekran boyutunda çalışır:
 ```bash
 ./scripts/e2e-storage-build.sh  # bir kez: fotoğraf servisi (Supabase Storage) kaynaktan derlenir
 ./scripts/e2e-stack.sh        # ilk seferde Auth ve PostgREST ikili dosyalarını indirir
-npm run test:e2e              # K1–K13 kabul testleri
+npm run test:e2e              # K1–K14 kabul testleri
 ./scripts/e2e-stack.sh stop
 ```
 

@@ -18,7 +18,23 @@ export const WORK_ITEM_TEMPLATES: { key: string; name: string; unit: keyof typeo
   { key: "makine", name: "İş makinesi çalışması", unit: "saat" },
 ];
 
-export type ParsedVehicle = { plate: string; vehicle_type: string; capacity_ton: number | null };
+export type ParsedVehicle = {
+  plate: string;
+  vehicle_type: string;
+  capacity_ton: number | null;
+  ownership: "own" | "rented" | "subcontractor";
+  daily_rate: number | null;
+};
+
+// "kiralık 9000", "taşeron", "öz mal" → mülkiyet ve isteğe bağlı günlük kira
+function parseOwnership(text: string): { ownership: ParsedVehicle["ownership"]; daily_rate: number | null } | null {
+  const t = text.toLocaleLowerCase("tr-TR").trim();
+  const m = /^(kiralık|kiralik|taşeron|taseron|öz mal|öz|oz)\s*([\d.,\s]*)(tl)?$/.exec(t);
+  if (!m) return null;
+  const ownership = m[1].startsWith("kira") ? "rented" : m[1].startsWith("ta") ? "subcontractor" : "own";
+  const rate = m[2].trim() ? parseTrNumber(m[2]) : null;
+  return { ownership, daily_rate: rate !== null && rate >= 0 ? rate : null };
+}
 
 // Kullanıcının alt alta yazdığı araçlar:
 //   06 ABC 123
@@ -39,7 +55,9 @@ export function parseVehicleLines(text: string): { vehicles: ParsedVehicle[]; er
     const parts = raw.split(sep);
     const platePart = parts[0]?.trim();
     const typePart = parts[1]?.trim();
-    const capPart = parts.slice(2).join(",").trim();
+    // Son sütun "kiralık 9000" gibi mülkiyetse ayrılır; aradaki kısım kapasite
+    const lastOwnership = parts.length >= 3 ? parseOwnership(parts[parts.length - 1]) : null;
+    const capPart = parts.slice(2, lastOwnership ? -1 : undefined).join(",").trim();
     const plate = normalizePlate(platePart ?? "");
     if (plate.length < 2 || plate.length > 20) {
       errors.push(`${i + 1}. satır: plaka okunamadı`);
@@ -55,7 +73,13 @@ export function parseVehicleLines(text: string): { vehicles: ParsedVehicle[]; er
     }
     if (seen.has(plate)) return; // aynı plaka iki kez yazılmış
     seen.add(plate);
-    vehicles.push({ plate, vehicle_type: typePart || "Kamyon", capacity_ton: capacity });
+    vehicles.push({
+      plate,
+      vehicle_type: typePart || "Kamyon",
+      capacity_ton: capacity,
+      ownership: lastOwnership?.ownership ?? "own",
+      daily_rate: lastOwnership?.daily_rate ?? null,
+    });
   });
 
   if (vehicles.length > 100) errors.push("Tek seferde en fazla 100 araç eklenebilir");

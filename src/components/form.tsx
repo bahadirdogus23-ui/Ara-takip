@@ -99,6 +99,8 @@ export function SelectField(props: BaseProps & { options: Option[]; placeholder?
     <div className="space-y-1">
       <Label id={id} label={label} required={required} />
       <select
+        // Kayıttan sonra form sıfırlanınca tarayıcı ilk seçeneğe dönmesin: değer değişince yeniden kurulur
+        key={value}
         id={id}
         name={name}
         defaultValue={value}

@@ -14,15 +14,16 @@ export type PayVehicle = {
   ownership: string;
   contractor_name: string | null;
   hourly_rate: number | null;
+  daily_rate?: number | null;
 };
 export type PayRoute = { id: string; name: string; trip_price: number | null; cycle_minutes: number | null; distance_km: number | null };
 export type PayTrip = { vehicle_id: string; route_id: string | null; entry_date: string; trip_count: number };
-export type PayMachineLog = { vehicle_id: string; hours: number | null };
+export type PayMachineLog = { vehicle_id: string; hours: number | null; log_date?: string };
 
 export type PayLine = {
   plate: string;
   description: string; // güzergâh adı ya da "Makine çalışması"
-  unit: "sefer" | "saat";
+  unit: "sefer" | "saat" | "gün";
   quantity: number;
   unitPrice: number | null; // null: ücret tanımlı değil
   amount: number; // TL
@@ -58,14 +59,16 @@ export function computeContractorPayments(input: {
 
   for (const v of payable) {
     const trips = input.trips.filter((t) => t.vehicle_id === v.id);
-    const hours = input.machineLogs.filter((l) => l.vehicle_id === v.id).reduce((s, l) => s + Number(l.hours ?? 0), 0);
-    if (!trips.length && !hours) continue;
+    const logs = input.machineLogs.filter((l) => l.vehicle_id === v.id);
+    const hours = logs.reduce((s, l) => s + Number(l.hours ?? 0), 0);
+    if (!trips.length && !logs.length) continue;
     const g = group(v);
 
-    // Güzergâh başına sefer satırı
+    // Güzergâh başına sefer satırı (günlük kiralık araçta sefer ücreti ödenmez, sefer sayısı bilgi amaçlı)
     const byRoute = new Map<string, number>();
     for (const t of trips) byRoute.set(t.route_id ?? "", (byRoute.get(t.route_id ?? "") ?? 0) + t.trip_count);
     for (const [routeId, qty] of byRoute) {
+      if (v.daily_rate !== null && v.daily_rate !== undefined) break;
       const route = routeById.get(routeId);
       const price = route?.trip_price === null || route?.trip_price === undefined ? null : Number(route.trip_price);
       const amountK = price === null ? 0 : qty * toKurus(price);
@@ -74,7 +77,20 @@ export function computeContractorPayments(input: {
       g.totalK += amountK;
     }
 
-    if (hours) {
+    // Günlük kira: aracın sefer ya da makine kaydı olan her gün bir gün sayılır.
+    // Günlük kira girilmişse saatlik/sefer ücreti yerine bu kullanılır (ikisi birden ödenmez).
+    const dailyRate = v.daily_rate === null || v.daily_rate === undefined ? null : Number(v.daily_rate);
+    if (dailyRate !== null) {
+      const days = new Set([
+        ...trips.map((t) => t.entry_date),
+        ...input.machineLogs.filter((l) => l.vehicle_id === v.id && l.log_date).map((l) => l.log_date!),
+      ]).size;
+      const amountK = days * toKurus(dailyRate);
+      g.lines.push({ plate: v.plate, description: "Günlük kira", unit: "gün", quantity: days, unitPrice: dailyRate, amount: toTL(amountK) });
+      g.totalK += amountK;
+    }
+
+    if (hours && dailyRate === null) {
       const rate = v.hourly_rate === null ? null : Number(v.hourly_rate);
       // saat 2 ondalıklı: kuruş × saat, sonra kuruşa yuvarla
       const amountK = rate === null ? 0 : Math.round(toKurus(rate) * hours);
@@ -129,13 +145,13 @@ export async function loadContractorPayments(
     .eq("tenant_id", tenantId)
     .gte("entry_date", from)
     .lte("entry_date", to);
-  let logs = supabase.from("machine_logs").select("vehicle_id, hours").eq("tenant_id", tenantId).gte("log_date", from).lte("log_date", to);
+  let logs = supabase.from("machine_logs").select("vehicle_id, hours, log_date").eq("tenant_id", tenantId).gte("log_date", from).lte("log_date", to);
   if (siteId) {
     trips = trips.eq("site_id", siteId);
     logs = logs.eq("site_id", siteId);
   }
   const [v, r, t, m] = await Promise.all([
-    supabase.from("vehicles").select("id, plate, vehicle_type, ownership, contractor_name, hourly_rate").eq("tenant_id", tenantId),
+    supabase.from("vehicles").select("id, plate, vehicle_type, ownership, contractor_name, hourly_rate, daily_rate").eq("tenant_id", tenantId),
     supabase.from("routes").select("id, name, trip_price, cycle_minutes, distance_km").eq("tenant_id", tenantId),
     trips,
     logs,

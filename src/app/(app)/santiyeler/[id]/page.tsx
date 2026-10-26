@@ -33,6 +33,11 @@ export default async function SitePage({
   ]);
   if (!site) notFound();
   const manager = canManage(tenant.role);
+  // Seferlerin imalat sayılabileceği kalemler: birimi sefer ya da ton olanlar
+  const tripItems = (items ?? [])
+    .filter((i) => i.unit === "sefer" || i.unit === "ton")
+    .map((i) => ({ value: i.id, label: `${i.name} (${unitLabel(i.unit)})` }));
+  const itemName = new Map(items?.map((i) => [i.id, i.name]));
 
   return (
     <div className="mx-auto max-w-3xl space-y-6">
@@ -136,6 +141,7 @@ export default async function SitePage({
                       {[r.origin, r.destination].filter(Boolean).join(" → ") || "—"}
                       {r.distance_km !== null && ` · ${formatTrNumber(r.distance_km, 2)} km`}
                       {r.trip_price !== null && ` · ${formatTL(r.trip_price)}/sefer`}
+                      {r.work_item_id && ` · seferler → ${itemName.get(r.work_item_id) ?? "iş kalemi"}`}
                       {(() => {
                         const limit = routeLimit(r);
                         return limit && ` · ${limit.estimated ? "tahmini " : ""}en fazla ${limit.maxTrips} sefer/gün`;
@@ -148,7 +154,7 @@ export default async function SitePage({
                   <details className="mt-2">
                     <summary className="cursor-pointer text-sm font-medium text-brand-strong">Düzenle</summary>
                     <div className="mt-3">
-                      <RouteForm siteId={site.id} route={r} />
+                      <RouteForm siteId={site.id} route={r} items={tripItems} />
                     </div>
                   </details>
                 )}
@@ -161,7 +167,7 @@ export default async function SitePage({
         {manager && (
           <div className="card">
             <h3 className="mb-3 font-semibold">Yeni güzergâh</h3>
-            <RouteForm siteId={site.id} />
+            <RouteForm siteId={site.id} items={tripItems} />
           </div>
         )}
       </section>

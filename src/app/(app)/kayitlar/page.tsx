@@ -5,6 +5,7 @@ import { canManage, getContext } from "@/lib/context";
 import { readFilters } from "@/lib/filters";
 import { formatDateTR } from "@/lib/format";
 import { formatTrNumber } from "@/lib/number";
+import { groupTrips } from "@/lib/trip-groups";
 import { UNITS } from "@/lib/validation";
 import { deleteProduction, deleteTrip } from "../gunluk/actions";
 
@@ -23,7 +24,10 @@ export default async function EntriesPage({
   const { supabase, user, tenant } = await getContext();
 
   const { data: sites } = await supabase.from("sites").select("id, name").eq("tenant_id", tenant.id).order("name");
-  const { siteId, from, to } = readFilters(params, (sites ?? []).map((s) => s.id));
+  const { siteId, from, to } = readFilters(
+    params,
+    (sites ?? []).map((s) => s.id),
+  );
   const siteName = new Map(sites?.map((s) => [s.id, s.name]));
   const canDelete = (createdBy: string) => canManage(tenant.role) || createdBy === user.id;
   const tabHref = (tur: string) => `/kayitlar?${new URLSearchParams({ tur, santiye: siteId, bas: from, bit: to })}`;
@@ -104,7 +108,9 @@ async function ProductionList({ siteId, from, to, siteName, canDelete }: ListPro
             return (
               <li key={itemId} className="flex justify-between gap-3">
                 <span className="min-w-0 truncate">
-                  {!siteId && item && <span className="text-muted">{siteName.get(rows.find((r) => r.work_item_id === itemId)!.site_id)} · </span>}
+                  {!siteId && item && (
+                    <span className="text-muted">{siteName.get(rows.find((r) => r.work_item_id === itemId)!.site_id)} · </span>
+                  )}
                   {item?.name ?? "—"}
                 </span>
                 <span className="shrink-0 font-semibold tabular-nums">
@@ -114,7 +120,9 @@ async function ProductionList({ siteId, from, to, siteName, canDelete }: ListPro
             );
           })}
         </ul>
-        {rows.length === LIMIT && <p className="mt-2 text-xs text-amber-700">İlk {LIMIT} kayıt gösteriliyor; aralığı daraltın.</p>}
+        {rows.length === LIMIT && (
+          <p className="mt-2 text-xs text-amber-700">İlk {LIMIT} kayıt gösteriliyor; aralığı daraltın.</p>
+        )}
       </section>
 
       <ul className="divide-y divide-line overflow-hidden rounded-xl border border-line bg-surface">
@@ -186,23 +194,38 @@ async function TripList({ siteId, from, to, siteName, canDelete }: ListProps) {
             </li>
           ))}
         </ul>
-        {rows.length === LIMIT && <p className="mt-2 text-xs text-amber-700">İlk {LIMIT} kayıt gösteriliyor; aralığı daraltın.</p>}
+        {rows.length === LIMIT && (
+          <p className="mt-2 text-xs text-amber-700">İlk {LIMIT} kayıt gösteriliyor; aralığı daraltın.</p>
+        )}
       </section>
 
       <ul className="divide-y divide-line overflow-hidden rounded-xl border border-line bg-surface">
-        {rows.map((r) => (
-          <li key={r.id} className="flex items-start justify-between gap-3 px-4 py-2.5 text-sm">
+        {groupTrips(rows, canDelete).map((g) => (
+          <li key={g.key} className="flex items-start justify-between gap-3 px-4 py-2.5 text-sm">
             <div className="min-w-0">
               <p>
-                <span className="text-muted">{formatDateTR(r.entry_date)}</span>{" "}
-                <span className="font-semibold tabular-nums">{r.trip_count} sefer</span> {plate.get(r.vehicle_id) ?? "—"}
-                {r.tonnage !== null && ` · ${formatTrNumber(r.tonnage)} ton`}
+                <span className="text-muted">{formatDateTR(g.date)}</span>{" "}
+                <span className="font-semibold tabular-nums">{g.trips} sefer</span> {plate.get(g.vehicleId) ?? "—"}
+                {g.ton > 0 && ` · ${formatTrNumber(g.ton)} t kantar`}
               </p>
               <p className="text-muted">
-                {[!siteId && siteName.get(r.site_id), r.route_id && routeName.get(r.route_id), r.note].filter(Boolean).join(" · ")}
+                {[
+                  !siteId && siteName.get(rows.find((r) => r.vehicle_id === g.vehicleId && r.entry_date === g.date)!.site_id),
+                  g.routeId ? routeName.get(g.routeId) : "Güzergâhsız",
+                  ...g.notes,
+                ]
+                  .filter(Boolean)
+                  .join(" · ")}
               </p>
             </div>
-            {canDelete(r.created_by) && <DeleteButton action={deleteTrip} id={r.id} />}
+            {g.lastDeletableId && (
+              <DeleteButton
+                action={deleteTrip}
+                id={g.lastDeletableId}
+                label="Son seferi sil"
+                confirmText="Bu araçtaki son sefer silinsin mi?"
+              />
+            )}
           </li>
         ))}
       </ul>

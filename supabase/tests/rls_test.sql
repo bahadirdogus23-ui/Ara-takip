@@ -320,4 +320,29 @@ reset role;
 select pg_temp.check((select count(*) from storage.objects) = 1, 'T17d Başka firmanın klasörüne ya da geçersiz yola dosya yüklenemez');
 select pg_temp.check((select count(*) from public.photos) = 1, 'T17e Kayıt başka firmanın dosya yolunu gösteremez');
 
+-- T18: Güzergâh iş kalemine bağlanınca seferler imalat sayılır
+select pg_temp.login('00000000-0000-0000-0000-00000000000a');
+insert into public.work_items(tenant_id, site_id, name, unit, unit_price)
+  values (:'tenant_a', :'site_a', 'Hafriyat nakliyesi', 'sefer', 750) returning id as item_sefer \gset
+insert into public.work_items(tenant_id, site_id, name, unit, unit_price)
+  values (:'tenant_a', :'site_a', 'Kırma taş', 'ton', 40) returning id as item_ton \gset
+insert into public.routes(tenant_id, site_id, name, work_item_id) values (:'tenant_a', :'site_a', 'Döküm', :'item_sefer') returning id as route_sefer \gset
+insert into public.routes(tenant_id, site_id, name, work_item_id) values (:'tenant_a', :'site_a', 'Taş ocağı', :'item_ton') returning id as route_ton \gset
+insert into public.trip_entries(tenant_id, site_id, vehicle_id, route_id, entry_date, trip_count) values
+  (:'tenant_a', :'site_a', :'vehicle_a', :'route_sefer', '2026-10-26', 1),
+  (:'tenant_a', :'site_a', :'vehicle_a', :'route_sefer', '2026-10-26', 1),
+  (:'tenant_a', :'site_a', :'vehicle_a', :'route_sefer', '2026-10-26', 3);
+insert into public.trip_entries(tenant_id, site_id, vehicle_id, route_id, entry_date, trip_count, tonnage) values
+  (:'tenant_a', :'site_a', :'vehicle_a', :'route_ton', '2026-10-26', 1, 24.5),
+  (:'tenant_a', :'site_a', :'vehicle_a', :'route_ton', '2026-10-26', 1, null);
+select pg_temp.check(s.quantity = 5 and s.amount = 3750, 'T18a Sefer birimli kalem: 5 sefer × 750 = 3.750')
+  from public.production_summary(:'site_a', '2026-10-26', '2026-10-26') s where s.work_item_id = :'item_sefer';
+select pg_temp.check(s.quantity = 24.5 and s.amount = 980, 'T18b Ton birimli kalem yalnızca girilen kantar tonunu sayar: 24,5 × 40 = 980')
+  from public.production_summary(:'site_a', '2026-10-26', '2026-10-26') s where s.work_item_id = :'item_ton';
+\set ON_ERROR_STOP off
+insert into public.routes(tenant_id, site_id, name, work_item_id) values (:'tenant_a', :'site_a', 'Yanlış', :'item_b');
+\set ON_ERROR_STOP on
+reset role;
+select pg_temp.check(not exists (select 1 from public.routes where name = 'Yanlış'), 'T18c Güzergâh başka firmanın iş kalemine bağlanamaz');
+
 \echo 'TÜM VERİTABANI TESTLERİ GEÇTİ'

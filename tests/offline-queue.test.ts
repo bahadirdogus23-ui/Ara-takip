@@ -33,10 +33,16 @@ describe("çevrimdışı sefer kuyruğu", () => {
   });
 
   it("araç başına bekleyenleri yalnızca o şantiye ve gün için sayar", () => {
-    const q = [tap("v1", "a"), tap("v1", "b"), tap("v2", "c"), tap("v1", "d", "2026-10-24"), tap("v1", "e", "2026-10-25", "s2")];
+    const q = [
+      { ...tap("v1", "a"), tonnage: 24.5 },
+      tap("v1", "b"),
+      tap("v2", "c"),
+      tap("v1", "d", "2026-10-24"),
+      tap("v1", "e", "2026-10-25", "s2"),
+    ];
     expect([...pendingByVehicle(q, "s1", "2026-10-25")]).toEqual([
-      ["v1", 2],
-      ["v2", 1],
+      ["v1", { trips: 2, ton: 24.5, untonned: 1 }],
+      ["v2", { trips: 1, ton: 0, untonned: 1 }],
     ]);
   });
 

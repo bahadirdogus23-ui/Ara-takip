@@ -25,7 +25,7 @@ export default async function TripCounterPage({ searchParams }: { searchParams: 
   const [{ data: vehicles }, { data: routes }, { data: trips }] = await Promise.all([
     supabase.from("vehicles").select("id, plate, vehicle_type, capacity_ton").eq("tenant_id", tenant.id).eq("active", true).order("plate"),
     supabase.from("routes").select("id, name, cycle_minutes, distance_km").eq("site_id", site.id).order("name"),
-    supabase.from("trip_entries").select("vehicle_id, route_id, trip_count, created_at").eq("site_id", site.id).eq("entry_date", today),
+    supabase.from("trip_entries").select("vehicle_id, route_id, trip_count, tonnage, created_at").eq("site_id", site.id).eq("entry_date", today),
   ]);
 
   // Güzergâhın fiziksel sınırını aşan araçlar (şişirilmiş sefer şüphesi)
@@ -45,6 +45,8 @@ export default async function TripCounterPage({ searchParams }: { searchParams: 
       type: v.vehicle_type,
       capacityTon: v.capacity_ton === null ? null : Number(v.capacity_ton),
       trips: mine.reduce((s, t) => s + t.trip_count, 0),
+      realTon: mine.reduce((s, t) => s + Number(t.tonnage ?? 0), 0),
+      untonnedTrips: mine.filter((t) => t.tonnage === null).reduce((s, t) => s + t.trip_count, 0),
       lastAt: last ? hhmm(last) : null,
       warning: flag
         ? `${routeName.get(flag.routeId)}: ${flag.trips} sefer, ${flag.estimated ? "tahmini " : ""}en fazla ${flag.maxTrips} yapılabilir`

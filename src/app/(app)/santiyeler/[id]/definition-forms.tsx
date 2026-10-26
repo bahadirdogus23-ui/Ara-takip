@@ -36,7 +36,15 @@ export function WorkItemForm({ siteId, item }: { siteId: string; item?: Tables<"
   );
 }
 
-export function RouteForm({ siteId, route }: { siteId: string; route?: Tables<"routes"> }) {
+export function RouteForm({
+  siteId,
+  route,
+  items,
+}: {
+  siteId: string;
+  route?: Tables<"routes">;
+  items: { value: string; label: string }[];
+}) {
   const [state, action] = useActionState(saveRoute, null);
   const p = route ? `rt-${route.id}` : "rt-new";
   return (
@@ -51,6 +59,16 @@ export function RouteForm({ siteId, route }: { siteId: string; route?: Tables<"r
         <Field idPrefix={p} name="destination" label="Nereye" defaultValue={route?.destination} state={state} />
         <NumberField idPrefix={p} name="distance_km" label="Mesafe (km)" defaultValue={num(route?.distance_km ?? null)} state={state} />
       </div>
+      <SelectField
+        idPrefix={p}
+        name="work_item_id"
+        label="Seferler hangi iş kalemine imalat olarak yazılsın?"
+        options={items}
+        placeholder="— Yazılmasın —"
+        defaultValue={route?.work_item_id}
+        hint="Birimi sefer olan kalemde sefer sayısı, ton olan kalemde girilen kantar tonu imalat sayılır ve işveren birim fiyatıyla tutara yansır."
+        state={state}
+      />
       <NumberField
         idPrefix={p}
         name="trip_price"

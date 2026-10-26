@@ -5,6 +5,7 @@ import { canManage, getContext } from "@/lib/context";
 import { formatDateTR, isoDateTR } from "@/lib/format";
 import { pickSite } from "@/lib/site-pref";
 import { formatTrNumber } from "@/lib/number";
+import { groupTrips } from "@/lib/trip-groups";
 import { UNITS } from "@/lib/validation";
 import { deleteProduction, deleteTrip } from "./actions";
 import { ProductionForm, TripForm } from "./entry-forms";
@@ -14,11 +15,7 @@ export const metadata = { title: "Günlük giriş" };
 
 const unitLabel = (u: string | undefined) => (u ? (UNITS[u as keyof typeof UNITS] ?? u) : "");
 
-export default async function DailyEntryPage({
-  searchParams,
-}: {
-  searchParams: Promise<{ santiye?: string; tarih?: string }>;
-}) {
+export default async function DailyEntryPage({ searchParams }: { searchParams: Promise<{ santiye?: string; tarih?: string }> }) {
   const { santiye, tarih } = await searchParams;
   const { supabase, user, tenant } = await getContext();
 
@@ -48,11 +45,26 @@ export default async function DailyEntryPage({
   const date = tarih && /^\d{4}-\d{2}-\d{2}$/.test(tarih) ? tarih : today;
 
   const [{ data: items }, { data: vehicles }, { data: routes }, { data: production }, { data: trips }] = await Promise.all([
-    supabase.from("work_items").select("id, code, name, unit").eq("site_id", site.id).order("code", { nullsFirst: false }).order("name"),
+    supabase
+      .from("work_items")
+      .select("id, code, name, unit")
+      .eq("site_id", site.id)
+      .order("code", { nullsFirst: false })
+      .order("name"),
     supabase.from("vehicles").select("id, plate, vehicle_type, active").eq("tenant_id", tenant.id).order("plate"),
     supabase.from("routes").select("id, name").eq("site_id", site.id).order("name"),
-    supabase.from("production_entries").select("id, work_item_id, quantity, note, created_by").eq("site_id", site.id).eq("entry_date", date).order("created_at", { ascending: false }),
-    supabase.from("trip_entries").select("id, vehicle_id, route_id, trip_count, tonnage, note, created_by").eq("site_id", site.id).eq("entry_date", date).order("created_at", { ascending: false }),
+    supabase
+      .from("production_entries")
+      .select("id, work_item_id, quantity, note, created_by")
+      .eq("site_id", site.id)
+      .eq("entry_date", date)
+      .order("created_at", { ascending: false }),
+    supabase
+      .from("trip_entries")
+      .select("id, vehicle_id, route_id, trip_count, tonnage, note, created_by")
+      .eq("site_id", site.id)
+      .eq("entry_date", date)
+      .order("created_at", { ascending: false }),
   ]);
 
   const itemById = new Map(items?.map((i) => [i.id, i]));
@@ -63,6 +75,10 @@ export default async function DailyEntryPage({
   // Pasif araçlar formda çıkmaz ama eski kayıtlarda plakası görünür
   const activeVehicles = vehicles?.filter((v) => v.active) ?? [];
   const totalTrips = trips?.reduce((s, t) => s + t.trip_count, 0) ?? 0;
+  const tripGroups = groupTrips(
+    (trips ?? []).map((t) => ({ ...t, entry_date: date })),
+    canDelete,
+  );
 
   return (
     <div className="mx-auto max-w-xl space-y-5">
@@ -146,24 +162,29 @@ export default async function DailyEntryPage({
         </div>
 
         <div className="overflow-hidden rounded-xl border border-line bg-surface">
-          <p className="border-b border-line bg-bg px-4 py-2 text-sm font-semibold">
-            Sefer ({totalTrips} sefer, {trips?.length ?? 0} kayıt)
-          </p>
-          {trips?.length ? (
+          <p className="border-b border-line bg-bg px-4 py-2 text-sm font-semibold">Sefer ({totalTrips} sefer)</p>
+          {tripGroups.length ? (
             <ul className="divide-y divide-line">
-              {trips.map((t) => (
-                <li key={t.id} className="flex items-start justify-between gap-3 px-4 py-2.5">
+              {tripGroups.map((g) => (
+                <li key={g.key} className="flex items-start justify-between gap-3 px-4 py-2.5">
                   <div className="min-w-0 text-sm">
                     <p>
-                      <span className="font-semibold tabular-nums">{t.trip_count} sefer</span>{" "}
-                      {vehicleById.get(t.vehicle_id)?.plate ?? "—"}
-                      {t.tonnage !== null && ` · ${formatTrNumber(t.tonnage)} ton`}
+                      <span className="font-semibold tabular-nums">{g.trips} sefer</span>{" "}
+                      {vehicleById.get(g.vehicleId)?.plate ?? "—"}
+                      {g.ton > 0 && ` · ${formatTrNumber(g.ton)} t kantar`}
                     </p>
                     <p className="text-muted">
-                      {[t.route_id && routeById.get(t.route_id)?.name, t.note].filter(Boolean).join(" · ")}
+                      {[g.routeId ? routeById.get(g.routeId)?.name : "Güzergâhsız", ...g.notes].filter(Boolean).join(" · ")}
                     </p>
                   </div>
-                  {canDelete(t.created_by) && <DeleteButton action={deleteTrip} id={t.id} />}
+                  {g.lastDeletableId && (
+                    <DeleteButton
+                      action={deleteTrip}
+                      id={g.lastDeletableId}
+                      label="Son seferi sil"
+                      confirmText="Bu araçtaki son sefer silinsin mi?"
+                    />
+                  )}
                 </li>
               ))}
             </ul>

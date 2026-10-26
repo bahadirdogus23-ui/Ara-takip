@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/lib/database.types";
+import { loadContractorPayments } from "@/lib/contractor";
 import { fuelCheck } from "@/lib/field-checks";
 import { toKurus, toTL } from "@/lib/money";
 import { EXPENSE_CATEGORIES, UNITS } from "@/lib/validation";
@@ -81,6 +82,8 @@ export function summarizeReport(input: {
   trips: TripRow[];
   vehicles: VehicleRow[];
   machineLogs?: MachineLogRow[];
+  // Kiralık/taşeron araçların ücretlerinden hesaplanan maliyet (taşeron hakedişi ile aynı hesap)
+  vehicleCosts?: { total: number; lines: number };
 }): Report {
   const items: ReportItem[] = input.production.map((r) => ({
     code: r.code ?? null,
@@ -103,6 +106,16 @@ export function summarizeReport(input: {
     total: Number(e.total),
     count: Number(e.entry_count),
   }));
+  if (input.vehicleCosts && input.vehicleCosts.total > 0) {
+    expenses.push({
+      category: "vehicle_rent",
+      label: "Araç kirası / taşeron (otomatik)",
+      amount: input.vehicleCosts.total,
+      vat: 0, // ücretler KDV hariç girilir; KDV faturaya göre değişir
+      total: input.vehicleCosts.total,
+      count: input.vehicleCosts.lines,
+    });
+  }
 
   const vehicleById = new Map(input.vehicles.map((v) => [v.id, v]));
   const byVehicle = new Map<string, ReportTrip>();
@@ -194,12 +207,13 @@ export async function loadReport(
   if (!site) return null;
 
   const args = { p_site: siteId, p_from: from, p_to: to };
-  const [prod, exp, trips, vehicles, machineLogs] = await Promise.all([
+  const [prod, exp, trips, vehicles, machineLogs, pay] = await Promise.all([
     supabase.rpc("production_summary", args),
     supabase.rpc("expense_summary", args),
     supabase.from("trip_entries").select("vehicle_id, trip_count, tonnage").eq("site_id", siteId).gte("entry_date", from).lte("entry_date", to),
     supabase.from("vehicles").select("id, plate, vehicle_type, fuel_norm_lph").eq("tenant_id", tenant.id),
     supabase.from("machine_logs").select("vehicle_id, hours, fuel_liters").eq("site_id", siteId).gte("log_date", from).lte("log_date", to),
+    loadContractorPayments(supabase, tenant.id, siteId, from, to),
   ]);
   const failed = [prod, exp, trips, vehicles, machineLogs].find((r) => r.error);
   if (failed?.error) throw new Error("Rapor verisi alınamadı");
@@ -214,5 +228,6 @@ export async function loadReport(
     trips: trips.data ?? [],
     vehicles: vehicles.data ?? [],
     machineLogs: machineLogs.data ?? [],
+    vehicleCosts: { total: pay.total, lines: pay.contractors.reduce((n, c) => n + c.lines.length, 0) },
   });
 }
