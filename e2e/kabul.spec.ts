@@ -421,6 +421,97 @@ test("K11: internet yokken sefer telefona kaydedilir, bağlantı gelince gönder
   expect(await count()).toBe(before + 2);
 });
 
+test("K16: telefonda bekleyen seferler çıkışta ve sunucu reddinde kaybolmaz", async ({
+  page,
+}) => {
+  const dialogs: string[] = [];
+  page.on("dialog", (d) => {
+    dialogs.push(d.message());
+    void d.accept();
+  });
+  await signIn(page, owner);
+  await page.goto("/sefer");
+  const card = page.locator("li", { hasText: "35 KY 101" });
+  const count = async () =>
+    Number(
+      (await card.getByLabel(/^\d+ sefer$/).getAttribute("aria-label"))!.split(
+        " ",
+      )[0],
+    );
+  const before = await count();
+  const queued = () =>
+    page.evaluate(
+      () => JSON.parse(localStorage.getItem("hafriyol_kuyruk") ?? "[]").length,
+    );
+
+  // Bağlantı kopuk (istekler sunucuya ulaşmıyor): 3 sefer telefona yazılır
+  const block = (route: import("@playwright/test").Route) =>
+    route.request().method() === "POST" ? route.abort() : route.continue();
+  await page.route("**/*", block);
+  for (let i = 1; i <= 3; i++) {
+    await page.getByRole("button", { name: "35 KY 101 +1 sefer" }).click();
+    await expect.poll(queued).toBe(i);
+  }
+  // Başka ekrana geçilir, gönderim yine denenir ama bağlantı yok; şerit görünür
+  await page.goto("/menu");
+  await expect(page.getByText("3 sefer telefonda bekliyor")).toBeVisible();
+  await page.unroute("**/*", block);
+
+  // Çıkış uyarır ve kuyruğu silmez
+  await page.getByRole("button", { name: "Çıkış yap" }).click();
+  await page.waitForURL("**/giris");
+  expect(dialogs.some((m) => m.includes("3 sefer henüz gönderilmedi"))).toBe(
+    true,
+  );
+  expect(await queued()).toBe(3);
+
+  // Aynı kullanıcı tekrar girince, sayaç ekranına gitmeden gönderilir
+  await signIn(page, owner);
+  await expect.poll(queued, { timeout: 15_000 }).toBe(0);
+  await page.goto("/sefer");
+  expect(await count()).toBe(before + 3);
+
+  // Sunucunun kabul etmediği (çok eski) sefer silinmez, "gönderilemeyenler" listesinde görünür
+  const [siteId, vehicleId] = execSync(
+    "psql -h 127.0.0.1 -p 54339 -U postgres -d postgres -At -v ON_ERROR_STOP=1",
+    {
+      input: `select te.site_id || '|' || te.vehicle_id from public.trip_entries te join public.vehicles v on v.id = te.vehicle_id
+      where v.plate = '35 KY 101' order by te.created_at desc limit 1`,
+    },
+  )
+    .toString()
+    .trim()
+    .split("|");
+  await page.evaluate(
+    ([s, v]) =>
+      localStorage.setItem(
+        "hafriyol_kuyruk",
+        JSON.stringify([
+          {
+            siteId: s,
+            vehicleId: v,
+            routeId: null,
+            requestId: crypto.randomUUID(),
+            entryDate: "2025-01-01",
+            at: Date.now(),
+          },
+        ]),
+      ),
+    [siteId, vehicleId],
+  );
+  await page.reload();
+  await expect(page.getByText("Gönderilemeyen seferler (1)")).toBeVisible();
+  await expect(page.getByText(/en fazla 62 gün/)).toBeVisible();
+  expect(
+    await page.evaluate(
+      () =>
+        JSON.parse(localStorage.getItem("hafriyol_gonderilemeyen") ?? "[]")
+          .length,
+    ),
+  ).toBe(1);
+  await shot(page, "gonderilemeyen");
+});
+
 test("K12: taşeron hakedişi sefer ücretinden hesaplanır", async ({ page }) => {
   await signIn(page, owner);
   await page.goto("/araclar");

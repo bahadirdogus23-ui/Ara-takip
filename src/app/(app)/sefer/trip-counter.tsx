@@ -13,18 +13,28 @@ import {
 import {
   useCallback,
   useEffect,
+  useMemo,
   useOptimistic,
-  useRef,
   useState,
   useTransition,
 } from "react";
 import { formatTrNumber, parseTrNumber } from "@/lib/number";
 import {
+  discardRejected,
+  enqueue,
+  flushQueue,
+  mine,
   pendingByVehicle,
+  QUEUE_EVENT,
+  SENT_EVENT,
   readQueue,
+  readRejected,
+  retryRejected,
   withoutLastFor,
   writeQueue,
   type QueuedTap,
+  type QueueOwner,
+  type RejectedTap,
 } from "@/lib/offline-queue";
 import { tapTrip, undoTrip } from "./actions";
 
@@ -41,6 +51,8 @@ export type CounterVehicle = {
 };
 
 type Props = {
+  tenantId: string;
+  userId: string;
   siteId: string;
   today: string;
   vehicles: CounterVehicle[];
@@ -75,7 +87,18 @@ const store = {
   },
 };
 
-export function TripCounter({ siteId, today, vehicles, routes }: Props) {
+export function TripCounter({
+  tenantId,
+  userId,
+  siteId,
+  today,
+  vehicles,
+  routes,
+}: Props) {
+  const owner: QueueOwner = useMemo(
+    () => ({ tenantId, userId }),
+    [tenantId, userId],
+  );
   const [routeId, setRouteId] = useState<string>("");
   const [message, setMessage] = useState<{
     text: string;
@@ -84,49 +107,39 @@ export function TripCounter({ siteId, today, vehicles, routes }: Props) {
   const [, startTransition] = useTransition();
   // İnternet yokken girilen seferler (telefonda bekler)
   const [queue, setQueue] = useState<QueuedTap[]>([]);
+  // Sunucunun kabul etmediği seferler (silinmez; kullanıcı tekrar dener ya da siler)
+  const [rejected, setRejected] = useState<RejectedTap[]>([]);
   const [online, setOnline] = useState(true);
-  const flushing = useRef(false);
   // Kantar tonu modu: her seferde ton sorulur
   const [tonMode, setTonMode] = useState(false);
   const [tonFor, setTonFor] = useState<CounterVehicle | null>(null);
   const [tonText, setTonText] = useState("");
   const [tonError, setTonError] = useState<string | null>(null);
 
-  const enqueue = useCallback((t: QueuedTap) => {
-    const next = [...readQueue(), t];
-    writeQueue(next);
-    setQueue(next);
-  }, []);
+  // Bekleyenleri sırayla gönder (aynı işi uygulama kabuğu da her ekranda yapar)
+  const flush = useCallback(() => flushQueue(tapTrip, owner), [owner]);
 
-  // Bekleyenleri sırayla gönder; ağ hatasında dur, sonra tekrar denenir
-  const flush = useCallback(async () => {
-    if (flushing.current) return;
-    flushing.current = true;
-    let sent = 0;
-    try {
-      for (const t of readQueue()) {
-        let res;
-        try {
-          res = await tapTrip(t);
-        } catch {
-          break;
-        }
-        writeQueue(readQueue().filter((q) => q.requestId !== t.requestId));
-        if (res.ok) sent++;
-        else setMessage({ text: res.error, error: true });
-      }
-    } finally {
-      flushing.current = false;
-      setQueue(readQueue());
-      if (sent)
+  useEffect(() => {
+    const refresh = () => {
+      setQueue(mine(readQueue(), owner));
+      setRejected(mine(readRejected(), owner));
+    };
+    // Gönderim sonucu (bu ekran ya da uygulama kabuğu göndermiş olabilir)
+    const report = (e: Event) => {
+      const { sent, rejected: bad } = (
+        e as CustomEvent<{ sent: number; rejected: number }>
+      ).detail;
+      if (bad)
+        setMessage({
+          text: `${bad} sefer sunucuya kabul edilmedi; aşağıdaki listeye bakın`,
+          error: true,
+        });
+      else if (sent)
         setMessage({
           text: `İnternet geldi: bekleyen ${sent} sefer gönderildi`,
         });
-    }
-  }, []);
-
-  useEffect(() => {
-    setQueue(readQueue());
+    };
+    refresh();
     setOnline(navigator.onLine);
     setTonMode(store.get(TON_MODE_KEY) === "1");
     if (navigator.onLine) void flush();
@@ -137,11 +150,15 @@ export function TripCounter({ siteId, today, vehicles, routes }: Props) {
     const down = () => setOnline(false);
     window.addEventListener("online", up);
     window.addEventListener("offline", down);
+    window.addEventListener(QUEUE_EVENT, refresh);
+    window.addEventListener(SENT_EVENT, report);
     return () => {
+      window.removeEventListener(SENT_EVENT, report);
       window.removeEventListener("online", up);
       window.removeEventListener("offline", down);
+      window.removeEventListener(QUEUE_EVENT, refresh);
     };
-  }, [flush]);
+  }, [flush, owner]);
 
   // Dokunuş sunucuya ulaşmadan sayı hemen artar; hata olursa eski hâline döner
   const [shown, adjust] = useOptimistic(vehicles, (state, c: Change) =>
@@ -188,6 +205,8 @@ export function TripCounter({ siteId, today, vehicles, routes }: Props) {
       entryDate: today,
       tonnage: ton,
       at: Date.now(),
+      tenantId: owner.tenantId,
+      userId: owner.userId,
     };
     const what = ton ? `${formatTrNumber(ton)} t sefer` : "sefer";
     if (!navigator.onLine) {
@@ -250,7 +269,6 @@ export function TripCounter({ siteId, today, vehicles, routes }: Props) {
     const local = withoutLastFor(readQueue(), siteId, v.id);
     if (local.removed) {
       writeQueue(local.queue);
-      setQueue(local.queue);
       setMessage({ text: `${v.plate}: son sefer geri alındı` });
       return;
     }
@@ -374,6 +392,59 @@ export function TripCounter({ siteId, today, vehicles, routes }: Props) {
               : "Seferler telefona kaydedilir."}
           </span>
         </div>
+      )}
+
+      {rejected.length > 0 && (
+        <section className="rounded-xl border border-red-300 bg-red-50 p-3 text-sm text-red-900 dark:border-red-800 dark:bg-red-950/40 dark:text-red-200">
+          <h2 className="flex items-center gap-2 font-semibold">
+            <AlertTriangle className="size-5 shrink-0" aria-hidden />{" "}
+            Gönderilemeyen seferler ({rejected.length})
+          </h2>
+          <p className="mt-1 text-xs">
+            Telefonda duruyorlar, silinmediler. Sebebi düzeltip tekrar deneyin
+            ya da yöneticinize iletin.
+          </p>
+          <ul className="mt-2 divide-y divide-red-200 dark:divide-red-900">
+            {rejected.map((r) => (
+              <li
+                key={r.requestId}
+                className="flex items-center justify-between gap-2 py-2"
+              >
+                <span className="min-w-0">
+                  <span className="font-medium">
+                    {vehicles.find((v) => v.id === r.vehicleId)?.plate ??
+                      "Araç"}{" "}
+                    · {r.entryDate.split("-").reverse().join(".")}
+                    {r.tonnage ? ` · ${formatTrNumber(r.tonnage)} t` : ""}
+                  </span>
+                  <span className="block text-xs">{r.error}</span>
+                </span>
+                <span className="flex shrink-0 gap-2">
+                  <button
+                    type="button"
+                    className="btn-secondary min-h-9 px-3 text-xs"
+                    onClick={() => {
+                      retryRejected(r.requestId);
+                      void flush();
+                    }}
+                  >
+                    Tekrar dene
+                  </button>
+                  <button
+                    type="button"
+                    className="min-h-9 px-2 text-xs font-medium text-red-700 dark:text-red-400"
+                    onClick={() => {
+                      if (confirm("Bu sefer kalıcı olarak silinsin mi?"))
+                        discardRejected(r.requestId);
+                    }}
+                  >
+                    Sil
+                  </button>
+                </span>
+              </li>
+            ))}
+          </ul>
+        </section>
       )}
 
       <div role="status" aria-live="polite" className="min-h-5 text-sm">

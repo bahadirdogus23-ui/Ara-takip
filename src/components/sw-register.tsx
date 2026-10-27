@@ -15,10 +15,8 @@ export function ServiceWorkerRegister() {
   return null;
 }
 
-// Çıkışta önbelleğe alınmış sayfaları sil
+// Çıkışta önbelleğe alınmış sayfaları sil. Telefonda bekleyen seferler SİLİNMEZ: her kayıt
+// sahibinin kullanıcı ve firma bilgisini taşır, aynı kullanıcı tekrar girince gönderilir.
 export function clearCachedPages() {
   navigator.serviceWorker?.controller?.postMessage("clear-pages");
-  try {
-    localStorage.removeItem("hafriyol_kuyruk");
-  } catch {}
 }

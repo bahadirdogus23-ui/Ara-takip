@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { OfflineSync } from "@/components/offline-sync";
 import { SignOutButton } from "@/components/sign-out-button";
 import { ROLE_LABELS, canManage, getContext } from "@/lib/context";
 import { BottomNav, DesktopNav } from "./nav";
@@ -39,6 +40,7 @@ export default async function AppLayout({
         <DesktopNav {...access} />
       </header>
       <main className="mx-auto max-w-5xl px-4 pt-5 pb-28 md:pb-10">
+        <OfflineSync tenantId={tenant.id} userId={user.id} />
         {children}
       </main>
       <BottomNav />

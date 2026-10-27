@@ -1,5 +1,8 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import {
+  flushQueue,
+  readRejected,
+  retryRejected,
   pendingByVehicle,
   QUEUE_KEY,
   readQueue,
@@ -64,5 +67,49 @@ describe("çevrimdışı sefer kuyruğu", () => {
     expect(r.removed).toBe(true);
     expect(r.queue.map((t) => t.requestId)).toEqual(["a", "b"]);
     expect(withoutLastFor([], "s1", "v1").removed).toBe(false);
+  });
+
+  const owner = { tenantId: "t1", userId: "u1" };
+
+  it("gönderilen kayıt kuyruktan çıkar; sunucunun reddettiği silinmez, gönderilemeyenlere geçer", async () => {
+    writeQueue([tap("v1", "a"), tap("v1", "b", "2026-08-01")]);
+    const r = await flushQueue(
+      async (t) =>
+        t.requestId === "a"
+          ? { ok: true }
+          : { ok: false, error: "Sefer tarihi geçersiz" },
+      owner,
+    );
+    expect(r).toEqual({ sent: 1, rejected: 1 });
+    expect(readQueue()).toEqual([]);
+    expect(readRejected().map((x) => [x.requestId, x.error])).toEqual([
+      ["b", "Sefer tarihi geçersiz"],
+    ]);
+    retryRejected("b");
+    expect(readQueue().map((x) => x.requestId)).toEqual(["b"]);
+    expect(readRejected()).toEqual([]);
+  });
+
+  it("bağlantı koparsa durur, kayıtlar kuyrukta kalır", async () => {
+    writeQueue([tap("v1", "a"), tap("v1", "b")]);
+    await flushQueue(async () => {
+      throw new Error("ağ yok");
+    }, owner);
+    expect(readQueue()).toHaveLength(2);
+  });
+
+  it("başka kullanıcının ya da firmanın kayıtlarını göndermez", async () => {
+    writeQueue([
+      { ...tap("v1", "a"), tenantId: "t1", userId: "u2" },
+      { ...tap("v1", "b"), tenantId: "t2", userId: "u1" },
+      { ...tap("v1", "c"), ...owner },
+    ]);
+    const sent: string[] = [];
+    await flushQueue(async (t) => {
+      sent.push(t.requestId);
+      return { ok: true };
+    }, owner);
+    expect(sent).toEqual(["c"]);
+    expect(readQueue().map((x) => x.requestId)).toEqual(["a", "b"]);
   });
 });

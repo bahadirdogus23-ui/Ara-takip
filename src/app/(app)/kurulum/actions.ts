@@ -61,14 +61,12 @@ export async function quickSetup(
     // Nakliye işi seçildiyse hazır bir güzergâh: bu güzergâhtaki seferler nakliye imalatı sayılır
     const haul = created?.find((c) => c.unit === "sefer");
     if (haul) {
-      const { error: re } = await supabase
-        .from("routes")
-        .insert({
-          tenant_id: tenant.id,
-          site_id: site.id,
-          name: "Ana güzergâh",
-          work_item_id: haul.id,
-        });
+      const { error: re } = await supabase.from("routes").insert({
+        tenant_id: tenant.id,
+        site_id: site.id,
+        name: "Ana güzergâh",
+        work_item_id: haul.id,
+      });
       if (re)
         return {
           error: `Şantiye açıldı ama güzergâh eklenemedi: ${dbErrorMessage(re)}`,

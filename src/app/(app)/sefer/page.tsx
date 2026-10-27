@@ -23,7 +23,7 @@ export default async function TripCounterPage({
   searchParams: Promise<{ santiye?: string }>;
 }) {
   const { santiye } = await searchParams;
-  const { supabase, tenant } = await getContext();
+  const { supabase, user, tenant } = await getContext();
   const manager = canManage(tenant.role);
 
   const { data: sites } = await supabase
@@ -126,6 +126,8 @@ export default async function TripCounterPage({
         />
       ) : (
         <TripCounter
+          tenantId={tenant.id}
+          userId={user.id}
           siteId={site.id}
           today={today}
           vehicles={counted}

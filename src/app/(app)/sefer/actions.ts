@@ -6,12 +6,16 @@ import { canManage, getContext } from "@/lib/context";
 import { dbErrorMessage } from "@/lib/errors";
 import { isoDateTR } from "@/lib/format";
 
-// Çevrimdışı kuyruktan gelen eski tarihli seferler: ileri tarih olamaz, en fazla 7 gün geriye
-function isAllowedTapDate(date: string): boolean {
+// Çevrimdışı kuyruktan gelen eski tarihli seferler: ileri tarih olamaz; saha personeli en fazla
+// 7 gün, firma sahibi/yönetici en fazla 62 gün geriye gönderebilir
+function isAllowedTapDate(
+  date: string,
+  maxDaysBack = 7,
+  today = isoDateTR(),
+): boolean {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return false;
-  const today = isoDateTR();
   const oldest = new Date(`${today}T00:00:00Z`);
-  oldest.setUTCDate(oldest.getUTCDate() - 7);
+  oldest.setUTCDate(oldest.getUTCDate() - maxDaysBack);
   return date <= today && date >= oldest.toISOString().slice(0, 10);
 }
 
@@ -37,11 +41,6 @@ export async function tapTrip(input: {
     return { ok: false, error: "Geçersiz istek" };
   }
   const entryDate = input.entryDate ?? isoDateTR();
-  if (!isAllowedTapDate(entryDate))
-    return {
-      ok: false,
-      error: "Sefer tarihi geçersiz (en fazla 7 gün önceye girilebilir)",
-    };
   const tonnage = input.tonnage ?? null;
   if (
     tonnage !== null &&
@@ -50,6 +49,14 @@ export async function tapTrip(input: {
     return { ok: false, error: "Ton 0 ile 200 arasında olmalı" };
   }
   const { supabase, tenant } = await getContext();
+  if (!isAllowedTapDate(entryDate, canManage(tenant.role) ? 62 : 7)) {
+    return {
+      ok: false,
+      error: canManage(tenant.role)
+        ? "Sefer tarihi geçersiz (en fazla 62 gün önceye girilebilir)"
+        : "Sefer 7 günden eski: Kayıt gir ekranından elle girin ya da yöneticinize iletin",
+    };
+  }
   const { error } = await supabase.from("trip_entries").insert({
     tenant_id: tenant.id,
     site_id: siteId,
