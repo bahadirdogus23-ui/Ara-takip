@@ -2,7 +2,7 @@ import { DeleteButton } from "@/components/form";
 import { canManage, getContext } from "@/lib/context";
 import { formatTrNumber } from "@/lib/number";
 import { loadPrices } from "@/lib/prices";
-import { VEHICLE_OWNERSHIP } from "@/lib/validation";
+import { VEHICLE_KIND, VEHICLE_OWNERSHIP } from "@/lib/validation";
 import { deleteVehicle } from "./actions";
 import { VehicleForm } from "./vehicle-form";
 
@@ -17,6 +17,31 @@ export default async function VehiclesPage() {
     .order("active", { ascending: false })
     .order("plate");
   if (error) throw new Error("Araçlar alınamadı");
+  const [{ data: sites }, { data: links }] = await Promise.all([
+    supabase
+      .from("sites")
+      .select("id, name")
+      .eq("tenant_id", tenant.id)
+      .eq("status", "active")
+      .order("name"),
+    supabase
+      .from("site_vehicles")
+      .select("site_id, vehicle_id")
+      .eq("tenant_id", tenant.id),
+  ]);
+  const siteName = new Map(sites?.map((x) => [x.id, x.name]));
+  const sitesOf = (vehicleId: string) =>
+    (links ?? [])
+      .filter((l) => l.vehicle_id === vehicleId)
+      .map((l) => l.site_id);
+  // Yeni araç, araç ataması kullanan şantiyelere varsayılan olarak atanır
+  const assigning = new Set(links?.map((l) => l.site_id));
+  const choices = (checked: (siteId: string) => boolean) =>
+    (sites ?? []).map((x) => ({
+      id: x.id,
+      name: x.name,
+      checked: checked(x.id),
+    }));
   const manager = canManage(tenant.role);
   // Kira ücretleri ayrı tabloda, yalnızca sahibi/yöneticiye açık
   const rates = manager
@@ -54,7 +79,7 @@ export default async function VehiclesPage() {
                     )}
                   </p>
                   <p className="text-sm text-muted">
-                    {v.vehicle_type} ·{" "}
+                    {v.vehicle_type} · {VEHICLE_KIND[v.kind]} ·{" "}
                     {VEHICLE_OWNERSHIP[
                       v.ownership as keyof typeof VEHICLE_OWNERSHIP
                     ] ?? v.ownership}
@@ -64,6 +89,14 @@ export default async function VehiclesPage() {
                       ` · norm ${formatTrNumber(v.fuel_norm_lph, 2)} L/saat`}
                     {v.contractor_name && ` · ${v.contractor_name}`}
                   </p>
+                  {sitesOf(v.id).some((id) => siteName.has(id)) && (
+                    <p className="text-xs text-muted">
+                      Şantiye:{" "}
+                      {sitesOf(v.id)
+                        .flatMap((id) => siteName.get(id) ?? [])
+                        .join(", ")}
+                    </p>
+                  )}
                 </div>
                 {manager && (
                   <DeleteButton
@@ -79,7 +112,10 @@ export default async function VehiclesPage() {
                     Düzenle
                   </summary>
                   <div className="mt-3">
-                    <VehicleForm vehicle={v} />
+                    <VehicleForm
+                      vehicle={v}
+                      sites={choices((id) => sitesOf(v.id).includes(id))}
+                    />
                   </div>
                 </details>
               )}
@@ -91,7 +127,7 @@ export default async function VehiclesPage() {
       {manager && (
         <div className="card">
           <h2 className="mb-3 font-semibold">Yeni araç</h2>
-          <VehicleForm />
+          <VehicleForm sites={choices((id) => assigning.has(id))} />
         </div>
       )}
     </div>

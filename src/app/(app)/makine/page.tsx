@@ -11,6 +11,13 @@ import { pickSite } from "@/lib/site-pref";
 import { deleteMachineLog } from "./actions";
 import { MachineForm } from "./machine-form";
 
+// Önce iş makineleri; kamyonların da mazot kaydı girilebilir
+const KIND_GROUP = {
+  is_makinesi: "İş makineleri",
+  kamyon: "Kamyonlar",
+  diger: "Diğer",
+} as const;
+
 export const metadata = { title: "Makine saati ve mazot" };
 
 export default async function MachinePage({
@@ -50,7 +57,7 @@ export default async function MachinePage({
   const [{ data: vehicles }, { data: logs }] = await Promise.all([
     supabase
       .from("vehicles")
-      .select("id, plate, vehicle_type, fuel_norm_lph, active")
+      .select("id, plate, vehicle_type, kind, fuel_norm_lph, active")
       .eq("tenant_id", tenant.id)
       .order("plate"),
     supabase
@@ -96,10 +103,16 @@ export default async function MachinePage({
             siteId={site.id}
             date={date}
             requestId={randomUUID()}
-            machines={active.map((v) => ({
-              value: v.id,
-              label: `${v.plate} · ${v.vehicle_type}`,
-            }))}
+            machines={(["is_makinesi", "kamyon", "diger"] as const).flatMap(
+              (kind) =>
+                active
+                  .filter((v) => v.kind === kind)
+                  .map((v) => ({
+                    value: v.id,
+                    label: `${v.plate} · ${v.vehicle_type}`,
+                    group: KIND_GROUP[kind],
+                  })),
+            )}
           />
         ) : (
           <p className="text-sm text-muted">

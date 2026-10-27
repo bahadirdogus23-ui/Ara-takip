@@ -458,4 +458,54 @@ reset role;
 select pg_temp.check(not exists (select 1 from public.memberships where user_id = '00000000-0000-0000-0000-0000000000c1')
   and exists (select 1 from public.memberships where user_id = '00000000-0000-0000-0000-00000000000a'), 'T21k Yönetici saha personelini çıkarır, sahibi çıkaramaz');
 
+-- ---------------------------------------------------------------------------
+-- T22: Araç cinsi ve araç–şantiye ataması
+-- ---------------------------------------------------------------------------
+select pg_temp.check((select kind from public.vehicles where id = :'vehicle_a') = 'kamyon', 'T22a Araç cinsi varsayılan kamyon');
+do $$ begin
+  update public.vehicles set kind = 'ucak' where plate = '06 ABC 123';
+  raise exception 'TEST BAŞARISIZ: T22b geçersiz araç cinsi kabul edildi';
+exception when check_violation then
+  raise notice 'GEÇTİ: T22b Geçersiz araç cinsi reddedilir';
+end $$;
+
+select pg_temp.login('00000000-0000-0000-0000-00000000000a');
+insert into public.site_vehicles(tenant_id, site_id, vehicle_id) values (:'tenant_a', :'site_a', :'vehicle_a');
+reset role;
+
+select pg_temp.login('00000000-0000-0000-0000-0000000000a2');
+select pg_temp.check((select count(*) from public.site_vehicles where site_id = :'site_a') = 1, 'T22c Saha personeli şantiyenin araçlarını görür');
+delete from public.site_vehicles where site_id = :'site_a';
+do $$ begin
+  insert into public.site_vehicles(tenant_id, site_id, vehicle_id)
+    select tenant_id, id, (select id from public.vehicles limit 1) from public.sites limit 1;
+  raise exception 'TEST BAŞARISIZ: T22d saha personeli araç atadı';
+exception when insufficient_privilege or unique_violation then
+  raise notice 'GEÇTİ: T22d Saha personeli araç atayamaz';
+end $$;
+reset role;
+select pg_temp.check((select count(*) from public.site_vehicles where site_id = :'site_a') = 1, 'T22e Saha personeli atamayı silemez');
+
+select pg_temp.login('00000000-0000-0000-0000-00000000000b');
+select pg_temp.check((select count(*) from public.site_vehicles) = 0, 'T22f Başka firma atamaları göremez');
+do $$ begin
+  insert into public.site_vehicles(tenant_id, site_id, vehicle_id)
+    values ((select tenant_id from public.memberships where user_id = (select auth.uid()) limit 1),
+            (select id from public.sites limit 1), '00000000-0000-0000-0000-000000000099');
+  raise exception 'TEST BAŞARISIZ: T22g başka firmanın aracı atandı';
+exception when foreign_key_violation or insufficient_privilege then
+  raise notice 'GEÇTİ: T22g Başka firmanın aracı atanamaz';
+end $$;
+reset role;
+
+-- Firma A'nın aracını B şantiyesine atamak: bileşik yabancı anahtar engeller
+do $$ begin
+  insert into public.site_vehicles(tenant_id, site_id, vehicle_id)
+    select s.tenant_id, s.id, v.id from public.sites s, public.vehicles v
+    where s.name = 'Kanalizasyon Hattı' and v.plate = '06 ABC 123' and v.tenant_id <> s.tenant_id;
+  raise exception 'TEST BAŞARISIZ: T22h firmalar arası atama yapıldı';
+exception when foreign_key_violation then
+  raise notice 'GEÇTİ: T22h Bir firmanın aracı başka firmanın şantiyesine atanamaz';
+end $$;
+
 \echo 'TÜM VERİTABANI TESTLERİ GEÇTİ'

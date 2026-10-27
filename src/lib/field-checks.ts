@@ -1,6 +1,8 @@
 // Sahadaki beyanların tutarlılık denetimleri. Saf fonksiyonlar: ekranlar, rapor ve
 // WhatsApp özeti aynı kuralı kullanır.
 
+import type { VehicleKind } from "@/lib/database.types";
+
 // Yakıt normunun ne kadar aşılınca uyarı verileceği (%20 tolerans)
 export const FUEL_TOLERANCE = 1.2;
 
@@ -93,9 +95,15 @@ export function suspiciousTrips(
   return out;
 }
 
-// Sefer yapmayan iş makineleri (sefer sayacında listelenmez; makine saati ekranında görünür)
+// Araç türü yazısından kamyon / iş makinesi tahmini. Yalnızca yeni araç eklenirken
+// varsayılanı seçmek için; asıl ayrım araçtaki "kind" alanıdır, kullanıcı değiştirebilir.
+// Veritabanındaki ilk sınıflandırma (20261027175236 migration'ı) aynı listeyi kullanır.
 const MACHINE_TYPES =
-  /ekskavat|kepçe|kepce|beko|greyder|dozer|silindir|loder|loader|vinç|vinc|finişer|finiser|kırıcı|kirici|forklift|jeneratör|jenerator/i;
+  /ekskavat|kepçe|kepce|beko|greyder|dozer|silindir|loder|loader|vinç|vinc|finişer|finiser|kırıcı|kirici|forklift|jeneratör|jenerator|jcb|kazıcı|kazici|paletli|iş makine|is makine/i;
+const OTHER_TYPES = /arazöz|arazoz|sulama|pikap|binek|minibüs|minibus|servis/i;
 
-export const isMachineType = (vehicleType: string) =>
-  MACHINE_TYPES.test(vehicleType);
+export function guessVehicleKind(vehicleType: string): VehicleKind {
+  if (MACHINE_TYPES.test(vehicleType)) return "is_makinesi";
+  if (OTHER_TYPES.test(vehicleType)) return "diger";
+  return "kamyon";
+}

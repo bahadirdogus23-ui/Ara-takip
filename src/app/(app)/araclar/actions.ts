@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { deleteRow, isUuid } from "@/lib/actions";
 import { canManage, getContext } from "@/lib/context";
 import { dbErrorMessage } from "@/lib/errors";
+import { guessVehicleKind } from "@/lib/field-checks";
 import { saveVehicleRates } from "@/lib/prices";
 import {
   formValues,
@@ -28,8 +29,12 @@ export async function saveVehicle(
 
   const editId = isUuid(values.id) ? values.id : null;
   // Kira ücretleri ayrı tabloda (yalnızca sahibi/yönetici görür)
-  const { hourly_rate, daily_rate, ...vehicle } = parsed.data;
-  const row = { ...vehicle, tenant_id: tenant.id };
+  const { hourly_rate, daily_rate, kind, ...vehicle } = parsed.data;
+  const row = {
+    ...vehicle,
+    kind: kind ?? guessVehicleKind(vehicle.vehicle_type),
+    tenant_id: tenant.id,
+  };
   const { data, error } = editId
     ? await supabase
         .from("vehicles")
@@ -54,7 +59,38 @@ export async function saveVehicle(
   });
   if (rates.error) return { error: dbErrorMessage(rates.error), values };
 
+  // Şantiye ataması: yalnızca formda gösterilen (devam eden) şantiyeler eşitlenir
+  const { data: sites } = await supabase
+    .from("sites")
+    .select("id")
+    .eq("tenant_id", tenant.id)
+    .eq("status", "active");
+  const shown = (sites ?? []).map((x) => x.id);
+  const picked = shown.filter((id) => formData.get(`site_${id}`) === "on");
+  const dropped = shown.filter((id) => !picked.includes(id));
+  if (dropped.length) {
+    const { error: e } = await supabase
+      .from("site_vehicles")
+      .delete()
+      .eq("vehicle_id", data.id)
+      .eq("tenant_id", tenant.id)
+      .in("site_id", dropped);
+    if (e) return { error: dbErrorMessage(e), values };
+  }
+  if (picked.length) {
+    const { error: e } = await supabase.from("site_vehicles").upsert(
+      picked.map((site_id) => ({
+        tenant_id: tenant.id,
+        site_id,
+        vehicle_id: data.id,
+      })),
+      { onConflict: "site_id,vehicle_id", ignoreDuplicates: true },
+    );
+    if (e) return { error: dbErrorMessage(e), values };
+  }
+
   revalidatePath("/araclar");
+  revalidatePath("/sefer");
   return {
     ok: randomUUID(),
     message: "Kaydedildi",

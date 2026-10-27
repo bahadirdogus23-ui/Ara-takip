@@ -936,6 +936,55 @@ test("K20: tablet ve dizüstünde menünün tüm öğeleri ekranda", async ({
   }
 });
 
+test("K21: sayaçta önce şantiyeye atanmış araçlar, iş makinesi sayaçta yok", async ({
+  browser,
+}) => {
+  const page = await newPage(browser);
+  await signUp(page, {
+    email: `atama-${run}@hafriyol.local`,
+    password: "Atama-12345",
+  });
+  await createTenant(page, "Atama Deneme İnşaat");
+  await page.goto("/kurulum");
+  await page.locator("#site_name").fill("Baraj Yolu");
+  await page
+    .locator("#vehicles")
+    .fill("34 AT 001, Kamyon, 20\n34 AT 002, Kamyon, 20\nJCB-01, JCB 3CX");
+  await page.getByRole("button", { name: "Kurulumu bitir" }).click();
+  await page.waitForURL("**/sefer?hazir=1");
+  await expect(
+    page.getByRole("button", { name: "34 AT 001 +1 sefer" }),
+  ).toBeVisible();
+  // JCB türü iş makinesi sayılır: sayaçta çıkmaz
+  await expect(
+    page.getByRole("button", { name: "JCB-01 +1 sefer" }),
+  ).toHaveCount(0);
+
+  // Şantiyeye atanmamış kamyon "Diğer araçlar" altında
+  await page.goto("/araclar");
+  await page.locator("#vh-new-plate").fill("34 AT 003");
+  await page.locator("#vh-new-vehicle_type").fill("Kamyon");
+  // Atama kullanan şantiye yeni araçta işaretli gelir; kaldırılır
+  const siteBox = page.getByRole("checkbox", { name: "Baraj Yolu" }).last();
+  await expect(siteBox).toBeChecked();
+  await siteBox.uncheck();
+  await page.getByRole("button", { name: "Araç ekle" }).click();
+  await expect(page.getByText("34 AT 003", { exact: true })).toBeVisible();
+  await expect(page.getByText("Şantiye: Baraj Yolu")).toHaveCount(3);
+
+  await page.goto("/sefer");
+  const other = page.getByRole("button", { name: "34 AT 003 +1 sefer" });
+  await expect(other).toBeHidden();
+  await page.getByText("Diğer araçlar (1)").click();
+  await other.click();
+  await expect(page.getByText("34 AT 003: sefer kaydedildi")).toBeVisible();
+  // Bugün seferi olan araç artık ana listede
+  await page.reload();
+  await expect(other).toBeVisible();
+  await expect(page.getByText("Diğer araçlar")).toHaveCount(0);
+  await page.context().close();
+});
+
 test("K8: başka firma hiçbir veriyi göremez", async ({ browser }) => {
   const page = await newPage(browser);
   await signUp(page, other);

@@ -218,6 +218,12 @@ export const routeSchema = z.object({
     .refine((v) => v === null || /^[0-9a-f-]{36}$/i.test(v), "İş kalemi seçin"),
 });
 
+export const VEHICLE_KIND = {
+  kamyon: "Kamyon (sefer yapar)",
+  is_makinesi: "İş makinesi (saat / mazot)",
+  diger: "Diğer",
+} as const;
+
 export const VEHICLE_OWNERSHIP = {
   own: "Öz mal",
   rented: "Kiralık",
@@ -245,6 +251,11 @@ export const vehicleSchema = z.object({
     .trim()
     .min(2, "Araç türünü girin")
     .max(100, "Araç türü çok uzun"),
+  // Boşsa türden tahmin edilir (guessVehicleKind)
+  kind: z
+    .enum(["kamyon", "is_makinesi", "diger", ""], "Araç cinsini seçin")
+    .optional()
+    .transform((v) => v || null),
   ownership: z.enum(["own", "rented", "subcontractor"], "Mülkiyet seçin"),
   capacity_ton: optionalTrNumber({
     label: "Kapasite",

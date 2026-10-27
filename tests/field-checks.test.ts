@@ -88,7 +88,7 @@ describe("makine kaydı doğrulama", () => {
   });
 });
 
-import { isMachineType } from "@/lib/field-checks";
+import { guessVehicleKind } from "@/lib/field-checks";
 
 describe("araç türü", () => {
   it("iş makinelerini kamyonlardan ayırır", () => {
@@ -100,9 +100,11 @@ describe("araç türü", () => {
       "Silindir",
       "Lastikli loder",
     ]) {
-      expect(isMachineType(t)).toBe(true);
+      expect(guessVehicleKind(t)).toBe("is_makinesi");
     }
+    expect(guessVehicleKind("JCB 3CX")).toBe("is_makinesi");
     for (const t of ["Kamyon", "Damperli kamyon", "Çekici", "Tanker"])
-      expect(isMachineType(t)).toBe(false);
+      expect(guessVehicleKind(t)).toBe("kamyon");
+    expect(guessVehicleKind("Arazöz")).toBe("diger");
   });
 });

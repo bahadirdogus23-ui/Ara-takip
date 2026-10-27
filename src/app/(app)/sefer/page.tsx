@@ -3,7 +3,7 @@ import Link from "next/link";
 import { SitePicker } from "@/components/site-picker";
 import { canManage, getContext } from "@/lib/context";
 import { formatDateTR, isoDateTR } from "@/lib/format";
-import { isMachineType, suspiciousTrips } from "@/lib/field-checks";
+import { suspiciousTrips } from "@/lib/field-checks";
 import { pickSite } from "@/lib/site-pref";
 import { loadTripDays } from "@/lib/summaries";
 import { TripCounter, type CounterVehicle } from "./trip-counter";
@@ -44,25 +44,31 @@ export default async function TripCounterPage({
     );
 
   const today = isoDateTR();
-  const [{ data: vehicles }, { data: routes }, days] = await Promise.all([
-    supabase
-      .from("vehicles")
-      .select("id, plate, vehicle_type, capacity_ton")
-      .eq("tenant_id", tenant.id)
-      .eq("active", true)
-      .order("plate"),
-    supabase
-      .from("routes")
-      .select("id, name, cycle_minutes, distance_km")
-      .eq("site_id", site.id)
-      .order("name"),
-    loadTripDays(supabase, {
-      tenantId: tenant.id,
-      siteId: site.id,
-      from: today,
-      to: today,
-    }),
-  ]);
+  const [{ data: vehicles }, { data: routes }, { data: links }, days] =
+    await Promise.all([
+      supabase
+        .from("vehicles")
+        .select("id, plate, vehicle_type, kind, capacity_ton")
+        .eq("tenant_id", tenant.id)
+        .eq("active", true)
+        .order("plate"),
+      supabase
+        .from("routes")
+        .select("id, name, cycle_minutes, distance_km")
+        .eq("site_id", site.id)
+        .order("name"),
+      supabase
+        .from("site_vehicles")
+        .select("vehicle_id")
+        .eq("site_id", site.id)
+        .eq("tenant_id", tenant.id),
+      loadTripDays(supabase, {
+        tenantId: tenant.id,
+        siteId: site.id,
+        from: today,
+        to: today,
+      }),
+    ]);
   const trips = days.map((d) => ({
     vehicle_id: d.vehicle_id,
     route_id: d.route_id,
@@ -76,12 +82,15 @@ export default async function TripCounterPage({
   const flags = suspiciousTrips(trips, routes ?? []);
   const routeName = new Map(routes?.map((r) => [r.id, r.name]));
 
-  // İş makineleri sefer yapmaz; yalnızca kamyon vb. listelenir (bugün seferi girilmiş olanlar her durumda görünür)
+  // Yalnızca kamyonlar listelenir; bugün seferi girilmiş araç her durumda görünür
+  const hasTrips = (id: string) => trips.some((t) => t.vehicle_id === id);
   const haulers = (vehicles ?? []).filter(
-    (v) =>
-      !isMachineType(v.vehicle_type) ||
-      trips.some((t) => t.vehicle_id === v.id),
+    (v) => v.kind === "kamyon" || hasTrips(v.id),
   );
+  // Şantiyeye araç atanmışsa önce onlar; diğerleri "Diğer araçlar" altında
+  const assignedIds = new Set(links?.map((l) => l.vehicle_id));
+  const isAssigned = (id: string) =>
+    assignedIds.size === 0 || assignedIds.has(id) || hasTrips(id);
 
   const counted: CounterVehicle[] = haulers.map((v) => {
     const flag = flags.find((f) => f.vehicleId === v.id);
@@ -94,6 +103,7 @@ export default async function TripCounterPage({
       id: v.id,
       plate: v.plate,
       type: v.vehicle_type,
+      assigned: isAssigned(v.id),
       capacityTon: v.capacity_ton === null ? null : Number(v.capacity_ton),
       trips: mine.reduce((s, t) => s + t.trip_count, 0),
       realTon: mine.reduce((s, t) => s + Number(t.tonnage ?? 0), 0),

@@ -10,7 +10,7 @@ import {
   SubmitButton,
 } from "@/components/form";
 import type { Tables } from "@/lib/database.types";
-import { VEHICLE_OWNERSHIP } from "@/lib/validation";
+import { VEHICLE_KIND, VEHICLE_OWNERSHIP } from "@/lib/validation";
 import { saveVehicle } from "./actions";
 
 const trNum = (v: number | null | undefined) =>
@@ -19,8 +19,20 @@ const trNum = (v: number | null | undefined) =>
 const ownershipOptions = Object.entries(VEHICLE_OWNERSHIP).map(
   ([value, label]) => ({ value, label }),
 );
+const kindOptions = Object.entries(VEHICLE_KIND).map(([value, label]) => ({
+  value,
+  label,
+}));
 
-export function VehicleForm({ vehicle }: { vehicle?: Tables<"vehicles"> }) {
+export type SiteChoice = { id: string; name: string; checked: boolean };
+
+export function VehicleForm({
+  vehicle,
+  sites,
+}: {
+  vehicle?: Tables<"vehicles">;
+  sites: SiteChoice[];
+}) {
   const [state, action] = useActionState(saveVehicle, null);
   const p = vehicle ? `vh-${vehicle.id}` : "vh-new";
   const active = state?.values
@@ -56,6 +68,16 @@ export function VehicleForm({ vehicle }: { vehicle?: Tables<"vehicles"> }) {
           required
         />
       </div>
+      <SelectField
+        idPrefix={p}
+        name="kind"
+        label="Cinsi"
+        options={kindOptions}
+        placeholder={vehicle ? undefined : "Türe göre otomatik"}
+        defaultValue={vehicle?.kind ?? ""}
+        hint="Kamyonlar sefer sayacında, iş makineleri makine saati ekranında çıkar"
+        state={state}
+      />
       <div className="grid grid-cols-2 gap-3">
         <SelectField
           idPrefix={p}
@@ -109,6 +131,35 @@ export function VehicleForm({ vehicle }: { vehicle?: Tables<"vehicles"> }) {
         hint="İş makineleri için; bunun %20 üzerinde yakan kayıtlar kırmızı görünür"
         state={state}
       />
+      {sites.length > 0 && (
+        <fieldset className="space-y-1">
+          <legend className="text-sm font-medium">Çalıştığı şantiyeler</legend>
+          <p className="text-xs text-muted">
+            Sefer sayacında önce bu şantiyelerde görünür. Hiç araç atanmamış
+            şantiyede bütün araçlar görünür.
+          </p>
+          <div className="flex flex-wrap gap-x-4">
+            {sites.map((site) => (
+              <label
+                key={site.id}
+                className="flex min-h-11 items-center gap-2 text-sm"
+              >
+                <input
+                  type="checkbox"
+                  name={`site_${site.id}`}
+                  defaultChecked={
+                    state?.values
+                      ? state.values[`site_${site.id}`] === "on"
+                      : site.checked
+                  }
+                  className="size-5 accent-[var(--brand)]"
+                />
+                {site.name}
+              </label>
+            ))}
+          </div>
+        </fieldset>
+      )}
       <label className="flex min-h-11 items-center gap-2 text-sm">
         <input
           type="checkbox"

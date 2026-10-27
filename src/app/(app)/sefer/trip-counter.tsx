@@ -42,6 +42,7 @@ export type CounterVehicle = {
   id: string;
   plate: string;
   type: string;
+  assigned: boolean; // bu şantiyeye atanmış (ya da şantiyede atama yok)
   capacityTon: number | null;
   trips: number;
   realTon: number; // bugün girilen kantar tonu toplamı
@@ -313,6 +314,58 @@ export function TripCounter({
   );
   const allReal = display.every((v) => v.untonnedTrips === 0);
 
+  const card = (v: (typeof display)[number]) => (
+    <li
+      key={v.id}
+      className={`card min-w-0 p-3 ${v.warning ? "border-red-400 dark:border-red-700" : ""}`}
+    >
+      <div className="flex min-w-0 items-center gap-2">
+        <div className="hidden size-11 shrink-0 items-center justify-center rounded-xl bg-brand/10 text-brand-strong min-[400px]:flex">
+          <Truck className="size-6" aria-hidden />
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-lg font-bold tabular-nums">{v.plate}</p>
+          <p className="truncate text-xs text-muted">
+            {v.realTon > 0 ? `${formatTrNumber(v.realTon, 1)} t` : v.type}
+            {v.lastAt && ` · son ${v.lastAt}`}
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={() => undo(v)}
+          disabled={v.trips === 0}
+          aria-label={`${v.plate} son seferi geri al`}
+          className="flex size-11 shrink-0 items-center justify-center rounded-xl border border-line text-muted disabled:opacity-30"
+        >
+          <Minus className="size-5" aria-hidden />
+        </button>
+        <span
+          className="w-9 text-center text-2xl font-extrabold tabular-nums"
+          aria-label={`${v.trips} sefer`}
+        >
+          {v.trips}
+        </span>
+        <button
+          type="button"
+          onClick={() => tap(v)}
+          aria-label={`${v.plate} +1 sefer`}
+          className="flex size-16 shrink-0 items-center justify-center rounded-2xl bg-brand text-white shadow-md active:scale-95 dark:text-black"
+        >
+          <Plus className="size-9" aria-hidden strokeWidth={3} />
+        </button>
+      </div>
+      {v.warning && (
+        <p className="mt-2 flex items-start gap-1.5 rounded-lg bg-red-50 p-2 text-xs font-medium text-red-800 dark:bg-red-950/50 dark:text-red-300">
+          <AlertTriangle className="size-4 shrink-0" aria-hidden />
+          Fazla sefer şüphesi · {v.warning}
+        </p>
+      )}
+    </li>
+  );
+  const grid = "grid grid-cols-[minmax(0,1fr)] gap-3 sm:grid-cols-2";
+  const main = display.filter((v) => v.assigned);
+  const others = display.filter((v) => !v.assigned);
+
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-2 gap-3">
@@ -461,58 +514,15 @@ export function TripCounter({
         )}
       </div>
 
-      <ul className="grid grid-cols-[minmax(0,1fr)] gap-3 sm:grid-cols-2">
-        {display.map((v) => (
-          <li
-            key={v.id}
-            className={`card min-w-0 p-3 ${v.warning ? "border-red-400 dark:border-red-700" : ""}`}
-          >
-            <div className="flex min-w-0 items-center gap-2">
-              <div className="hidden size-11 shrink-0 items-center justify-center rounded-xl bg-brand/10 text-brand-strong min-[400px]:flex">
-                <Truck className="size-6" aria-hidden />
-              </div>
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-lg font-bold tabular-nums">
-                  {v.plate}
-                </p>
-                <p className="truncate text-xs text-muted">
-                  {v.realTon > 0 ? `${formatTrNumber(v.realTon, 1)} t` : v.type}
-                  {v.lastAt && ` · son ${v.lastAt}`}
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={() => undo(v)}
-                disabled={v.trips === 0}
-                aria-label={`${v.plate} son seferi geri al`}
-                className="flex size-11 shrink-0 items-center justify-center rounded-xl border border-line text-muted disabled:opacity-30"
-              >
-                <Minus className="size-5" aria-hidden />
-              </button>
-              <span
-                className="w-9 text-center text-2xl font-extrabold tabular-nums"
-                aria-label={`${v.trips} sefer`}
-              >
-                {v.trips}
-              </span>
-              <button
-                type="button"
-                onClick={() => tap(v)}
-                aria-label={`${v.plate} +1 sefer`}
-                className="flex size-16 shrink-0 items-center justify-center rounded-2xl bg-brand text-white shadow-md active:scale-95 dark:text-black"
-              >
-                <Plus className="size-9" aria-hidden strokeWidth={3} />
-              </button>
-            </div>
-            {v.warning && (
-              <p className="mt-2 flex items-start gap-1.5 rounded-lg bg-red-50 p-2 text-xs font-medium text-red-800 dark:bg-red-950/50 dark:text-red-300">
-                <AlertTriangle className="size-4 shrink-0" aria-hidden />
-                Fazla sefer şüphesi · {v.warning}
-              </p>
-            )}
-          </li>
-        ))}
-      </ul>
+      <ul className={grid}>{main.map(card)}</ul>
+      {others.length > 0 && (
+        <details className="rounded-xl border border-line bg-surface p-3">
+          <summary className="min-h-8 cursor-pointer text-sm font-medium">
+            Diğer araçlar ({others.length}) · bu şantiyeye atanmamış
+          </summary>
+          <ul className={`${grid} mt-3`}>{others.map(card)}</ul>
+        </details>
+      )}
 
       {tonFor && (
         <div

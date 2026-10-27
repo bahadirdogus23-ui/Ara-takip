@@ -4,6 +4,7 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { canManage, getContext } from "@/lib/context";
 import { dbErrorMessage } from "@/lib/errors";
+import { guessVehicleKind } from "@/lib/field-checks";
 import { parseVehicleLines, WORK_ITEM_TEMPLATES } from "@/lib/setup";
 import { SITE_COOKIE } from "@/lib/site-pref";
 import { formValues, type FormState } from "@/lib/validation";
@@ -91,6 +92,7 @@ export async function quickSetup(
             tenant_id: tenant.id,
             plate: v.plate,
             vehicle_type: v.vehicle_type,
+            kind: guessVehicleKind(v.vehicle_type),
             capacity_ton: v.capacity_ton,
             ownership: v.ownership,
           })),
@@ -119,6 +121,30 @@ export async function quickSetup(
             values,
           };
       }
+    }
+
+    // Yazılan araçlar (yeni ya da zaten kayıtlı) bu şantiyeye atanır: sayaçta yalnız onlar çıkar
+    const { data: all } = await supabase
+      .from("vehicles")
+      .select("id, plate")
+      .eq("tenant_id", tenant.id)
+      .in(
+        "plate",
+        vehicles.map((v) => v.plate),
+      );
+    if (all?.length) {
+      const { error: ae } = await supabase.from("site_vehicles").insert(
+        all.map((v) => ({
+          tenant_id: tenant.id,
+          site_id: site.id,
+          vehicle_id: v.id,
+        })),
+      );
+      if (ae)
+        return {
+          error: `Araçlar eklendi ama şantiyeye atanamadı: ${dbErrorMessage(ae)}`,
+          values,
+        };
     }
   }
 

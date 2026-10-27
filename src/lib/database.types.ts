@@ -8,6 +8,8 @@ export type Json =
   | { [key: string]: Json | undefined }
   | Json[];
 
+export type VehicleKind = "kamyon" | "is_makinesi" | "diger";
+
 type Rel = {
   foreignKeyName: string;
   columns: string[];
@@ -283,6 +285,7 @@ export type Database = {
           fuel_norm_lph: number | null;
           hourly_rate: number | null;
           id: string;
+          kind: VehicleKind;
           ownership: string;
           plate: string;
           tenant_id: string;
@@ -296,12 +299,28 @@ export type Database = {
           fuel_norm_lph?: number | null;
           hourly_rate?: number | null;
           id?: string;
+          kind?: VehicleKind;
           ownership?: string;
           plate: string;
           tenant_id: string;
           vehicle_type: string;
         };
         Update: Partial<Database["public"]["Tables"]["vehicles"]["Insert"]>;
+        Relationships: Rel[];
+      };
+      site_vehicles: {
+        Row: {
+          tenant_id: string;
+          site_id: string;
+          vehicle_id: string;
+          created_at: string;
+        };
+        Insert: {
+          tenant_id: string;
+          site_id: string;
+          vehicle_id: string;
+        };
+        Update: never;
         Relationships: Rel[];
       };
       invite_codes: {
