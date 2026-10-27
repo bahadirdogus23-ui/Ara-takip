@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { isUuid } from "@/lib/actions";
 import { canManage, getContext } from "@/lib/context";
 import { dbErrorMessage } from "@/lib/errors";
+import { minTapGapMinutes } from "@/lib/field-checks";
 import { isoDateTR } from "@/lib/format";
 
 // Çevrimdışı kuyruktan gelen eski tarihli seferler: ileri tarih olamaz; saha personeli en fazla
@@ -19,7 +20,9 @@ function isAllowedTapDate(
   return date <= today && date >= oldest.toISOString().slice(0, 10);
 }
 
-export type TapResult = { ok: true } | { ok: false; error: string };
+export type TapResult =
+  | { ok: true; warning?: string }
+  | { ok: false; error: string };
 
 const PATHS = ["/sefer", "/panel", "/kayitlar", "/gunluk"];
 
@@ -32,6 +35,7 @@ export async function tapTrip(input: {
   requestId: string;
   entryDate?: string; // internet yokken girilip sonra gönderilen seferin günü
   tonnage?: number | null; // kantar tonu (isteğe bağlı)
+  at?: number; // dokunuş anı (ms); internetsiz girilip sonra gönderilen seferde gerçek an
 }): Promise<TapResult> {
   const { siteId, vehicleId, routeId, requestId } = input;
   if (
@@ -48,7 +52,7 @@ export async function tapTrip(input: {
   ) {
     return { ok: false, error: "Ton 0 ile 200 arasında olmalı" };
   }
-  const { supabase, tenant } = await getContext();
+  const { supabase, user, tenant } = await getContext();
   if (!isAllowedTapDate(entryDate, canManage(tenant.role) ? 62 : 7)) {
     return {
       ok: false,
@@ -70,8 +74,44 @@ export async function tapTrip(input: {
   if (error && error.code !== "23505")
     return { ok: false, error: dbErrorMessage(error) };
   PATHS.forEach((p) => revalidatePath(p));
+  // Sefer kaydedilir ama başka biri aynı aracı az önce saydıysa uyarılır (iki puantör)
+  const at =
+    typeof input.at === "number" && Number.isFinite(input.at)
+      ? input.at
+      : Date.now();
+  const gap = await tapGapMinutes(supabase, routeId);
+  const { data: near } = await supabase
+    .from("trip_entries")
+    .select("id")
+    .eq("tenant_id", tenant.id)
+    .eq("site_id", siteId)
+    .eq("vehicle_id", vehicleId)
+    .neq("created_by", user.id)
+    .gte("created_at", new Date(at - gap * 60_000).toISOString())
+    .lte("created_at", new Date(at + gap * 60_000).toISOString())
+    .limit(1);
+  if (near?.length)
+    return {
+      ok: true,
+      warning: `${formatGap(gap)} içinde başka bir kullanıcı da bu aracı saydı; çift sayım olabilir. Aynı seferse geri alın.`,
+    };
   return { ok: true };
 }
+
+async function tapGapMinutes(
+  supabase: Awaited<ReturnType<typeof getContext>>["supabase"],
+  routeId: string | null,
+) {
+  if (!routeId) return minTapGapMinutes(null);
+  const { data } = await supabase
+    .from("routes")
+    .select("cycle_minutes")
+    .eq("id", routeId)
+    .maybeSingle();
+  return minTapGapMinutes(data?.cycle_minutes);
+}
+
+const formatGap = (minutes: number) => `${Math.round(minutes)} dakika`;
 
 // Son dokunuşu geri al: bugün bu araca girilen en son kayıt silinir.
 // Saha personeli yalnızca kendi kaydını geri alabilir (RLS de ayrıca engeller).

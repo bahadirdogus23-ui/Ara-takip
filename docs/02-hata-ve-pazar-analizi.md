@@ -114,12 +114,12 @@ Amacın: aşağıdaki hataları **önce yeniden üretip testle kanıtlamak**, so
 | H12 | P1 | CI ve hata izleme yok | Doğrulandı | ✔ `0ec78b6` |
 | H13 | P3 | Giriş sonrası yönlendirme (`sonra`) kontrolü zayıf | Şüpheli | ✔ `75bf9d2` |
 | H14 | P2 | İki şantiyede aynı gün çalışan aracın kirası şantiye raporlarında çift | Kodda görüldü | — |
-| H15 | P2 | Sayaç firmanın tüm araçlarını gösteriyor (araç–şantiye ataması yok) | Kodda görüldü | — |
-| H16 | P2 | Çift dokunuş ve iki puantörün aynı kamyonu sayması engellenmiyor | Kodda görüldü | — |
+| H15 | P2 | Sayaç firmanın tüm araçlarını gösteriyor (araç–şantiye ataması yok) | Kodda görüldü | ✔ `091efcf` |
+| H16 | P2 | Çift dokunuş ve iki puantörün aynı kamyonu sayması engellenmiyor | Kodda görüldü | ✔ F1-8 (çift sayım uyarısı) |
 | H17 | P2 | "Ton" birimli kalemde tonu girilmemiş seferler gelire girmiyor | Kodda görüldü | — |
 | H18 | P2 | Hızlı kurulum tek işlem (transaction) değil | Kodda görüldü | — |
 | H19 | P2 | İş kuralları yalnız uygulamada; veritabanında yok, dönem kilidi yok | Kodda görüldü | — |
-| H20 | P2 | Makine/kamyon ayrımı serbest metinden tahmin ediliyor | Kodda görüldü | — |
+| H20 | P2 | Makine/kamyon ayrımı serbest metinden tahmin ediliyor | Kodda görüldü | ✔ `091efcf` |
 | H21 | P2 | Service worker önbelleği: yanlış şantiye, paylaşılan telefon, eski veri uyarısı yok | Kodda görüldü | — |
 | H22 | P2 | Fotoğraflar internetsiz kuyruğa alınmıyor; sefere bağlanamıyor | Kodda görüldü | — |
 | H23 | P2 | Tablet ve dizüstünde üst menü ekrandan taşıyor | Doğrulandı | ✔ `75bf9d2` |

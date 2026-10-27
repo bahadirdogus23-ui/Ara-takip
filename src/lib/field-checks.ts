@@ -107,3 +107,14 @@ export function guessVehicleKind(vehicleType: string): VehicleKind {
   if (OTHER_TYPES.test(vehicleType)) return "diger";
   return "kamyon";
 }
+
+// Aynı kamyonun iki seferi arasında en az geçmesi gereken süre (dakika). Bundan kısa
+// aralıkla gelen sayım çift dokunuş ya da iki puantörün aynı seferi sayması olabilir:
+// güzergâhın çevrim süresinin yarısı, çevrim süresi girilmemişse 2 dakika.
+export const DEFAULT_TAP_GAP_MINUTES = 2;
+
+export function minTapGapMinutes(cycleMinutes: number | null | undefined) {
+  return cycleMinutes && cycleMinutes > 0
+    ? Math.max(1, cycleMinutes / 2)
+    : DEFAULT_TAP_GAP_MINUTES;
+}

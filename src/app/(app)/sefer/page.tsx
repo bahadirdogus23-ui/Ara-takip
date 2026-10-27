@@ -109,6 +109,7 @@ export default async function TripCounterPage({
       realTon: mine.reduce((s, t) => s + Number(t.tonnage ?? 0), 0),
       untonnedTrips: mine.reduce((s, t) => s + t.untonned, 0),
       lastAt: last ? hhmm(last) : null,
+      lastAtMs: last ? Date.parse(last) : null,
       warning: flag
         ? `${routeName.get(flag.routeId)}: ${flag.trips} sefer, ${flag.estimated ? "tahmini " : ""}en fazla ${flag.maxTrips} yapılabilir`
         : null,
@@ -141,7 +142,11 @@ export default async function TripCounterPage({
           siteId={site.id}
           today={today}
           vehicles={counted}
-          routes={(routes ?? []).map((r) => ({ id: r.id, name: r.name }))}
+          routes={(routes ?? []).map((r) => ({
+            id: r.id,
+            name: r.name,
+            cycleMinutes: r.cycle_minutes,
+          }))}
         />
       )}
     </div>

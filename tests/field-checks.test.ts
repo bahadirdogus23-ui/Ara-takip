@@ -108,3 +108,14 @@ describe("araç türü", () => {
     expect(guessVehicleKind("Arazöz")).toBe("diger");
   });
 });
+
+import { minTapGapMinutes } from "@/lib/field-checks";
+
+describe("sefer aralığı", () => {
+  it("çevrim süresinin yarısı, yoksa 2 dakika", () => {
+    expect(minTapGapMinutes(60)).toBe(30);
+    expect(minTapGapMinutes(1)).toBe(1);
+    expect(minTapGapMinutes(null)).toBe(2);
+    expect(minTapGapMinutes(0)).toBe(2);
+  });
+});

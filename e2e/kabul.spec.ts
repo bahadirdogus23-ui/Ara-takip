@@ -337,6 +337,8 @@ test("K6: saha personeli giderleri ve raporu göremez", async ({
 });
 
 test("K9: hızlı kurulum ve tek dokunuşla sefer sayacı", async ({ page }) => {
+  // Art arda dokunuşta "yine de sayılsın mı?" ve geri alma onayı kabul edilir
+  page.on("dialog", (d) => void d.accept());
   await signIn(page, owner);
   await page.goto("/kurulum");
   await page.locator("#site_name").fill("Köy Yolu Stabilize");
@@ -354,7 +356,6 @@ test("K9: hızlı kurulum ve tek dokunuşla sefer sayacı", async ({ page }) => 
     await expect(page.getByLabel(`${i + 1} sefer`).first()).toBeVisible();
   }
   await expect(page.getByText("35 KY 101: sefer kaydedildi")).toBeVisible();
-  page.once("dialog", (d) => d.accept());
   await page
     .getByRole("button", { name: "35 KY 101 son seferi geri al" })
     .click();
@@ -390,6 +391,7 @@ test("K9: hızlı kurulum ve tek dokunuşla sefer sayacı", async ({ page }) => 
 test("K10: makine/mazot, şişirilmiş sefer uyarısı ve WhatsApp özeti", async ({
   page,
 }) => {
+  page.on("dialog", (d) => void d.accept());
   await signIn(page, owner);
 
   // Normu 15 L/saat olan bir ekskavatör
@@ -480,6 +482,7 @@ test("K11: internet yokken sefer telefona kaydedilir, bağlantı gelince gönder
   page,
   context,
 }) => {
+  page.on("dialog", (d) => void d.accept());
   await signIn(page, owner);
   await page.goto("/sefer");
   // Service worker hazır olsun ve sayfa önbelleğe girsin
@@ -940,10 +943,8 @@ test("K21: sayaçta önce şantiyeye atanmış araçlar, iş makinesi sayaçta y
   browser,
 }) => {
   const page = await newPage(browser);
-  await signUp(page, {
-    email: `atama-${run}@hafriyol.local`,
-    password: "Atama-12345",
-  });
+  const email = `atama-${run}@hafriyol.local`;
+  await signUp(page, { email, password: "Atama-12345" });
   await createTenant(page, "Atama Deneme İnşaat");
   await page.goto("/kurulum");
   await page.locator("#site_name").fill("Baraj Yolu");
@@ -982,6 +983,37 @@ test("K21: sayaçta önce şantiyeye atanmış araçlar, iş makinesi sayaçta y
   await page.reload();
   await expect(other).toBeVisible();
   await expect(page.getByText("Diğer araçlar")).toHaveCount(0);
+
+  // Çift dokunuş: az önce sayılan kamyon için onay sorulur; vazgeçilirse sayılmaz
+  const asked: string[] = [];
+  page.once("dialog", (d) => {
+    asked.push(d.message());
+    void d.dismiss();
+  });
+  await other.click();
+  await expect(page.getByText("34 AT 003: sayılmadı")).toBeVisible();
+  expect(asked[0]).toContain("34 AT 003 az önce sayıldı");
+  await expect(
+    page
+      .locator("li", { hasText: "34 AT 003" })
+      .getByLabel("1 sefer", { exact: true }),
+  ).toBeVisible();
+
+  // İki puantör: başka bir kullanıcı aynı kamyonu az önce saymış; sefer kaydedilir ama uyarılır
+  psql(`insert into public.trip_entries(tenant_id, site_id, vehicle_id, entry_date, trip_count, created_by)
+    select v.tenant_id, s.id, v.id, (now() at time zone 'Europe/Istanbul')::date, 1,
+      (select id from auth.users where email <> '${email}' order by created_at limit 1)
+    from public.vehicles v join public.sites s on s.tenant_id = v.tenant_id and s.name = 'Baraj Yolu'
+    where v.plate = '34 AT 002' and v.tenant_id = (select tenant_id from public.memberships m
+      join auth.users u on u.id = m.user_id where u.email = '${email}')`);
+  await page.reload();
+  page.once("dialog", (d) => void d.accept());
+  await page.getByRole("button", { name: "34 AT 002 +1 sefer" }).click();
+  await expect(
+    page.getByText(
+      /34 AT 002: sefer kaydedildi\. 2 dakika içinde başka bir kullanıcı da bu aracı saydı/,
+    ),
+  ).toBeVisible();
   await page.context().close();
 });
 

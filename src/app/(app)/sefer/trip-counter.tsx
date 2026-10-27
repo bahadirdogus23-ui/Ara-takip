@@ -15,9 +15,11 @@ import {
   useEffect,
   useMemo,
   useOptimistic,
+  useRef,
   useState,
   useTransition,
 } from "react";
+import { minTapGapMinutes } from "@/lib/field-checks";
 import { formatTrNumber, parseTrNumber } from "@/lib/number";
 import {
   discardRejected,
@@ -48,6 +50,7 @@ export type CounterVehicle = {
   realTon: number; // bugün girilen kantar tonu toplamı
   untonnedTrips: number; // tonu girilmemiş seferler (kapasiteyle tahmin edilir)
   lastAt: string | null; // "14:32"
+  lastAtMs: number | null; // bugünkü son seferin anı (herhangi bir kullanıcı)
   warning: string | null; // şişirilmiş sefer şüphesi
 };
 
@@ -57,7 +60,7 @@ type Props = {
   siteId: string;
   today: string;
   vehicles: CounterVehicle[];
-  routes: { id: string; name: string }[];
+  routes: { id: string; name: string; cycleMinutes: number | null }[];
 };
 
 type Change = { id: string; delta: number; ton: number | null };
@@ -104,7 +107,10 @@ export function TripCounter({
   const [message, setMessage] = useState<{
     text: string;
     error?: boolean;
+    warn?: boolean;
   } | null>(null);
+  // Bu ekranda araca en son ne zaman dokunuldu (çift dokunuş denetimi)
+  const lastTap = useRef(new Map<string, number>());
   const [, startTransition] = useTransition();
   // İnternet yokken girilen seferler (telefonda bekler)
   const [queue, setQueue] = useState<QueuedTap[]>([]);
@@ -198,6 +204,7 @@ export function TripCounter({
 
   function record(v: CounterVehicle, ton: number | null) {
     navigator.vibrate?.(25);
+    lastTap.current.set(v.id, Date.now());
     const item: QueuedTap = {
       siteId,
       vehicleId: v.id,
@@ -222,9 +229,14 @@ export function TripCounter({
       try {
         const res = await tapTrip(item);
         setMessage(
-          res.ok
-            ? { text: `${v.plate}: ${what} kaydedildi` }
-            : { text: res.error, error: true },
+          !res.ok
+            ? { text: res.error, error: true }
+            : res.warning
+              ? {
+                  text: `${v.plate}: ${what} kaydedildi. ${res.warning}`,
+                  warn: true,
+                }
+              : { text: `${v.plate}: ${what} kaydedildi` },
         );
       } catch {
         // Bağlantı koptu: kaybolmasın, kuyruğa al
@@ -236,7 +248,34 @@ export function TripCounter({
     });
   }
 
+  // Aynı araç güzergâhın çevrim süresinin yarısından kısa sürede yeniden sayılıyorsa sorulur
+  function tooSoon(v: CounterVehicle): boolean {
+    const queued = queue
+      .filter((q) => q.vehicleId === v.id && q.siteId === siteId)
+      .map((q) => q.at);
+    const last = Math.max(
+      lastTap.current.get(v.id) ?? 0,
+      v.lastAtMs ?? 0,
+      ...queued,
+    );
+    if (!last) return false;
+    const cycle = routes.find((r) => r.id === routeId)?.cycleMinutes ?? null;
+    const ago = Date.now() - last;
+    if (ago >= minTapGapMinutes(cycle) * 60_000) return false;
+    const minutes = Math.floor(ago / 60_000);
+    const when = minutes < 1 ? "az önce" : `${minutes} dk önce`;
+    if (
+      confirm(
+        `${v.plate} ${when} sayıldı. Yeni bir sefer olarak yine de sayılsın mı?`,
+      )
+    )
+      return false;
+    setMessage({ text: `${v.plate}: sayılmadı` });
+    return true;
+  }
+
   function tap(v: CounterVehicle) {
+    if (tooSoon(v)) return;
     if (!tonMode) return record(v, null);
     // Son girilen ton (aynı kamyon genelde benzer yük taşır) ya da kapasite önerilir
     const last = store.get(`${LAST_TON_KEY}:${v.id}`);
@@ -280,6 +319,7 @@ export function TripCounter({
       });
       return;
     }
+    lastTap.current.delete(v.id);
     startTransition(async () => {
       adjust({ id: v.id, delta: -1, ton: null });
       const res = await undoTrip({ siteId, vehicleId: v.id });
@@ -506,7 +546,9 @@ export function TripCounter({
             className={
               message.error
                 ? "text-red-600"
-                : "text-green-700 dark:text-green-400"
+                : message.warn
+                  ? "font-medium text-amber-700 dark:text-amber-400"
+                  : "text-green-700 dark:text-green-400"
             }
           >
             {message.text}
