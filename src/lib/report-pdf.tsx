@@ -1,5 +1,13 @@
 import path from "node:path";
-import { Document, Font, Page, StyleSheet, Text, View, renderToBuffer } from "@react-pdf/renderer";
+import {
+  Document,
+  Font,
+  Page,
+  StyleSheet,
+  Text,
+  View,
+  renderToBuffer,
+} from "@react-pdf/renderer";
 import { formatDateTR, formatTL, isoDateTR } from "@/lib/format";
 import { formatTrNumber } from "@/lib/number";
 import { unitLabel, type Report } from "@/lib/report";
@@ -28,20 +36,47 @@ const s = StyleSheet.create({
   stat: { flex: 1, border: `1pt solid ${LINE}`, borderRadius: 4, padding: 8 },
   statValue: { fontSize: 12, fontWeight: "bold", marginTop: 2 },
   table: { borderTop: `1pt solid ${LINE}` },
-  row: { flexDirection: "row", borderBottom: `0.5pt solid ${LINE}`, paddingVertical: 4 },
+  row: {
+    flexDirection: "row",
+    borderBottom: `0.5pt solid ${LINE}`,
+    paddingVertical: 4,
+  },
   head: { backgroundColor: "#f3e8d6", fontWeight: "bold" },
   total: { fontWeight: "bold", borderBottom: `1pt solid #1c1a17` },
   right: { textAlign: "right" },
   note: { marginTop: 18, fontSize: 8, color: "#8a5a00" },
-  footer: { position: "absolute", bottom: 20, left: 36, right: 36, fontSize: 7, color: MUTED, flexDirection: "row", justifyContent: "space-between" },
+  footer: {
+    position: "absolute",
+    bottom: 20,
+    left: 36,
+    right: 36,
+    fontSize: 7,
+    color: MUTED,
+    flexDirection: "row",
+    justifyContent: "space-between",
+  },
 });
 
 type Col = { title: string; width: string; right?: boolean };
 
-function Table({ cols, rows, total }: { cols: Col[]; rows: string[][]; total?: string[] }) {
+function Table({
+  cols,
+  rows,
+  total,
+}: {
+  cols: Col[];
+  rows: string[][];
+  total?: string[];
+}) {
   const cells = (values: string[]) =>
     cols.map((c, i) => (
-      <Text key={i} style={[{ width: c.width, paddingHorizontal: 3 }, c.right ? s.right : {}]}>
+      <Text
+        key={i}
+        style={[
+          { width: c.width, paddingHorizontal: 3 },
+          c.right ? s.right : {},
+        ]}
+      >
         {values[i]}
       </Text>
     ));
@@ -60,7 +95,15 @@ function Table({ cols, rows, total }: { cols: Col[]; rows: string[][]; total?: s
   );
 }
 
-function Stat({ label, value, hint }: { label: string; value: string; hint: string }) {
+function Stat({
+  label,
+  value,
+  hint,
+}: {
+  label: string;
+  value: string;
+  hint: string;
+}) {
   return (
     <View style={s.stat}>
       <Text style={s.muted}>{label}</Text>
@@ -73,7 +116,12 @@ function Stat({ label, value, hint }: { label: string; value: string; hint: stri
 function ReportDocument({ r }: { r: Report }) {
   const { totals } = r;
   return (
-    <Document title={`${r.site.name} dönem raporu`} author={r.tenantName} creator="Hafriyol" language="tr">
+    <Document
+      title={`${r.site.name} dönem raporu`}
+      author={r.tenantName}
+      creator="Hafriyol"
+      language="tr"
+    >
       <Page size="A4" style={s.page}>
         <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
           <Text style={s.brand}>
@@ -90,9 +138,21 @@ function ReportDocument({ r }: { r: Report }) {
         </Text>
 
         <View style={s.stats}>
-          <Stat label="İmalat tutarı" value={formatTL(totals.amount)} hint="Sözleşme birim fiyatıyla, KDV hariç" />
-          <Stat label="Gider" value={formatTL(totals.expenseNet)} hint={`KDV hariç · KDV ${formatTL(totals.expenseVat)}`} />
-          <Stat label="Tutar − gider" value={formatTL(totals.difference)} hint="KDV hariç, kesintiler düşülmeden" />
+          <Stat
+            label="İmalat tutarı"
+            value={formatTL(totals.amount)}
+            hint="Sözleşme birim fiyatıyla, KDV hariç"
+          />
+          <Stat
+            label="Gider"
+            value={formatTL(totals.expenseNet)}
+            hint={`KDV hariç · KDV ${formatTL(totals.expenseVat)}`}
+          />
+          <Stat
+            label="Tutar − gider"
+            value={formatTL(totals.difference)}
+            hint="KDV hariç, kesintiler düşülmeden"
+          />
         </View>
 
         <Text style={s.h2}>İmalat</Text>
@@ -110,7 +170,9 @@ function ReportDocument({ r }: { r: Report }) {
             `${formatTrNumber(i.quantity)} ${unitLabel(i.unit)}`,
             i.unitPrice === null ? "—" : formatTL(i.unitPrice),
             formatTL(i.amount),
-            i.progressPercent === null ? "—" : `%${formatTrNumber(i.progressPercent, 2)}`,
+            i.progressPercent === null
+              ? "—"
+              : `%${formatTrNumber(i.progressPercent, 2)}`,
             i.unitCost === null ? "—" : formatTL(i.unitCost),
           ])}
           total={["Toplam", "", "", formatTL(totals.amount), "", ""]}
@@ -128,19 +190,28 @@ function ReportDocument({ r }: { r: Report }) {
               { title: "KDV", width: "16%", right: true },
               { title: "Toplam", width: "16%", right: true },
             ]}
-            rows={r.expenses.map((e) => [e.label, String(e.count), formatTL(e.amount), formatTL(e.vat), formatTL(e.total)])}
+            rows={r.expenses.map((e) => [
+              e.label,
+              String(e.count),
+              formatTL(e.amount),
+              formatTL(e.vat),
+              formatTL(e.total),
+            ])}
             total={[
               "Toplam",
               "",
               formatTL(totals.expenseNet),
               formatTL(totals.expenseVat),
-              formatTL(Math.round((totals.expenseNet + totals.expenseVat) * 100) / 100),
+              formatTL(
+                Math.round((totals.expenseNet + totals.expenseVat) * 100) / 100,
+              ),
             ]}
           />
         )}
         {r.expenses.length > 0 && (
           <Text style={[s.muted, { marginTop: 4 }]}>
-            İş kalemlerine bağlı: {formatTL(totals.directCost)} · Genel gider: {formatTL(totals.generalExpense)}
+            İş kalemlerine bağlı: {formatTL(totals.directCost)} · Genel gider:{" "}
+            {formatTL(totals.generalExpense)}
           </Text>
         )}
 
@@ -155,8 +226,18 @@ function ReportDocument({ r }: { r: Report }) {
               { title: "Sefer", width: "20%", right: true },
               { title: "Tonaj", width: "20%", right: true },
             ]}
-            rows={r.trips.map((t) => [t.plate, t.vehicleType, String(t.trips), t.tonnage > 0 ? formatTrNumber(t.tonnage) : "—"])}
-            total={["Toplam", "", String(totals.trips), totals.tonnage > 0 ? formatTrNumber(totals.tonnage) : "—"]}
+            rows={r.trips.map((t) => [
+              t.plate,
+              t.vehicleType,
+              String(t.trips),
+              t.tonnage > 0 ? formatTrNumber(t.tonnage) : "—",
+            ])}
+            total={[
+              "Toplam",
+              "",
+              String(totals.trips),
+              totals.tonnage > 0 ? formatTrNumber(totals.tonnage) : "—",
+            ]}
           />
         )}
 
@@ -177,10 +258,19 @@ function ReportDocument({ r }: { r: Report }) {
                 m.vehicleType,
                 formatTrNumber(m.hours, 2),
                 formatTrNumber(m.fuel, 0),
-                m.lph === null ? "—" : `${formatTrNumber(m.lph, 1)}${m.over ? " !" : ""}`,
+                m.lph === null
+                  ? "—"
+                  : `${formatTrNumber(m.lph, 1)}${m.over ? " !" : ""}`,
                 m.normLph === null ? "—" : formatTrNumber(m.normLph, 1),
               ])}
-              total={["Toplam", "", formatTrNumber(totals.machineHours, 2), formatTrNumber(totals.fuelLiters, 0), "", ""]}
+              total={[
+                "Toplam",
+                "",
+                formatTrNumber(totals.machineHours, 2),
+                formatTrNumber(totals.fuelLiters, 0),
+                "",
+                "",
+              ]}
             />
             {r.machines.some((m) => m.over) && (
               <Text style={[s.muted, { marginTop: 4, color: "#b91c1c" }]}>
@@ -191,14 +281,25 @@ function ReportDocument({ r }: { r: Report }) {
         )}
 
         <View style={s.note}>
-          <Text>Bu rapor iç takip içindir, resmî hakediş yerine geçmez. Fiyat farkı, kesintiler, teminat ve vergiler hesaba katılmaz.</Text>
+          <Text>
+            Bu rapor iç takip içindir, resmî hakediş yerine geçmez. Fiyat farkı,
+            kesintiler, teminat ve vergiler hesaba katılmaz.
+          </Text>
           <Text>Gerçekleşme = dönem miktarı ÷ planlanan miktar.</Text>
-          <Text>Birim maliyet = iş kalemine bağlanmış gider ÷ dönem miktarı.</Text>
+          <Text>
+            Birim maliyet = iş kalemine bağlanmış gider ÷ dönem miktarı.
+          </Text>
         </View>
 
         <View style={s.footer} fixed>
-          <Text>Hafriyol · {formatDateTR(isoDateTR())} tarihinde oluşturuldu</Text>
-          <Text render={({ pageNumber, totalPages }) => `${pageNumber} / ${totalPages}`} />
+          <Text>
+            Hafriyol · {formatDateTR(isoDateTR())} tarihinde oluşturuldu
+          </Text>
+          <Text
+            render={({ pageNumber, totalPages }) =>
+              `${pageNumber} / ${totalPages}`
+            }
+          />
         </View>
       </Page>
     </Document>

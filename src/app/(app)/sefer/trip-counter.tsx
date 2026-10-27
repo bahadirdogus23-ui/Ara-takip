@@ -1,9 +1,31 @@
 "use client";
 
-import { AlertTriangle, CloudOff, Minus, Plus, RefreshCw, Route, Scale, Truck } from "lucide-react";
-import { useCallback, useEffect, useOptimistic, useRef, useState, useTransition } from "react";
+import {
+  AlertTriangle,
+  CloudOff,
+  Minus,
+  Plus,
+  RefreshCw,
+  Route,
+  Scale,
+  Truck,
+} from "lucide-react";
+import {
+  useCallback,
+  useEffect,
+  useOptimistic,
+  useRef,
+  useState,
+  useTransition,
+} from "react";
 import { formatTrNumber, parseTrNumber } from "@/lib/number";
-import { pendingByVehicle, readQueue, withoutLastFor, writeQueue, type QueuedTap } from "@/lib/offline-queue";
+import {
+  pendingByVehicle,
+  readQueue,
+  withoutLastFor,
+  writeQueue,
+  type QueuedTap,
+} from "@/lib/offline-queue";
 import { tapTrip, undoTrip } from "./actions";
 
 export type CounterVehicle = {
@@ -32,7 +54,11 @@ const TON_MODE_KEY = "hafriyol_ton_modu";
 const LAST_TON_KEY = "hafriyol_son_ton";
 
 const timeNow = () =>
-  new Intl.DateTimeFormat("tr-TR", { hour: "2-digit", minute: "2-digit", timeZone: "Europe/Istanbul" }).format(new Date());
+  new Intl.DateTimeFormat("tr-TR", {
+    hour: "2-digit",
+    minute: "2-digit",
+    timeZone: "Europe/Istanbul",
+  }).format(new Date());
 
 const store = {
   get(key: string): string | null {
@@ -51,7 +77,10 @@ const store = {
 
 export function TripCounter({ siteId, today, vehicles, routes }: Props) {
   const [routeId, setRouteId] = useState<string>("");
-  const [message, setMessage] = useState<{ text: string; error?: boolean } | null>(null);
+  const [message, setMessage] = useState<{
+    text: string;
+    error?: boolean;
+  } | null>(null);
   const [, startTransition] = useTransition();
   // İnternet yokken girilen seferler (telefonda bekler)
   const [queue, setQueue] = useState<QueuedTap[]>([]);
@@ -89,7 +118,10 @@ export function TripCounter({ siteId, today, vehicles, routes }: Props) {
     } finally {
       flushing.current = false;
       setQueue(readQueue());
-      if (sent) setMessage({ text: `İnternet geldi: bekleyen ${sent} sefer gönderildi` });
+      if (sent)
+        setMessage({
+          text: `İnternet geldi: bekleyen ${sent} sefer gönderildi`,
+        });
     }
   }, []);
 
@@ -119,7 +151,8 @@ export function TripCounter({ siteId, today, vehicles, routes }: Props) {
             ...v,
             trips: Math.max(0, v.trips + c.delta),
             realTon: c.ton ? v.realTon + c.ton : v.realTon,
-            untonnedTrips: c.delta > 0 && !c.ton ? v.untonnedTrips + 1 : v.untonnedTrips,
+            untonnedTrips:
+              c.delta > 0 && !c.ton ? v.untonnedTrips + 1 : v.untonnedTrips,
             lastAt: c.delta > 0 ? timeNow() : v.lastAt,
           }
         : v,
@@ -129,7 +162,8 @@ export function TripCounter({ siteId, today, vehicles, routes }: Props) {
   // Seçili güzergâh telefonda hatırlanır; hiç seçilmemişse ilk güzergâh (seferler imalata yazılsın)
   useEffect(() => {
     const saved = store.get(`${ROUTE_KEY}:${siteId}`);
-    if (saved !== null && (saved === "" || routes.some((r) => r.id === saved))) setRouteId(saved);
+    if (saved !== null && (saved === "" || routes.some((r) => r.id === saved)))
+      setRouteId(saved);
     else if (routes.length) setRouteId(routes[0].id);
   }, [siteId, routes]);
 
@@ -158,18 +192,26 @@ export function TripCounter({ siteId, today, vehicles, routes }: Props) {
     const what = ton ? `${formatTrNumber(ton)} t sefer` : "sefer";
     if (!navigator.onLine) {
       enqueue(item);
-      setMessage({ text: `${v.plate}: internet yok, ${what} telefona kaydedildi` });
+      setMessage({
+        text: `${v.plate}: internet yok, ${what} telefona kaydedildi`,
+      });
       return;
     }
     startTransition(async () => {
       adjust({ id: v.id, delta: 1, ton });
       try {
         const res = await tapTrip(item);
-        setMessage(res.ok ? { text: `${v.plate}: ${what} kaydedildi` } : { text: res.error, error: true });
+        setMessage(
+          res.ok
+            ? { text: `${v.plate}: ${what} kaydedildi` }
+            : { text: res.error, error: true },
+        );
       } catch {
         // Bağlantı koptu: kaybolmasın, kuyruğa al
         enqueue(item);
-        setMessage({ text: `${v.plate}: bağlantı yok, ${what} telefona kaydedildi` });
+        setMessage({
+          text: `${v.plate}: bağlantı yok, ${what} telefona kaydedildi`,
+        });
       }
     });
   }
@@ -178,7 +220,9 @@ export function TripCounter({ siteId, today, vehicles, routes }: Props) {
     if (!tonMode) return record(v, null);
     // Son girilen ton (aynı kamyon genelde benzer yük taşır) ya da kapasite önerilir
     const last = store.get(`${LAST_TON_KEY}:${v.id}`);
-    setTonText(last ?? (v.capacityTon ? String(v.capacityTon).replace(".", ",") : ""));
+    setTonText(
+      last ?? (v.capacityTon ? String(v.capacityTon).replace(".", ",") : ""),
+    );
     setTonError(null);
     setTonFor(v);
   }
@@ -211,13 +255,20 @@ export function TripCounter({ siteId, today, vehicles, routes }: Props) {
       return;
     }
     if (!navigator.onLine) {
-      setMessage({ text: "İnternet yokken gönderilmiş seferler geri alınamaz", error: true });
+      setMessage({
+        text: "İnternet yokken gönderilmiş seferler geri alınamaz",
+        error: true,
+      });
       return;
     }
     startTransition(async () => {
       adjust({ id: v.id, delta: -1, ton: null });
       const res = await undoTrip({ siteId, vehicleId: v.id });
-      setMessage(res.ok ? { text: `${v.plate}: son sefer geri alındı` } : { text: res.error, error: true });
+      setMessage(
+        res.ok
+          ? { text: `${v.plate}: son sefer geri alındı` }
+          : { text: res.error, error: true },
+      );
     });
   }
 
@@ -225,12 +276,23 @@ export function TripCounter({ siteId, today, vehicles, routes }: Props) {
   const pending = pendingByVehicle(queue, siteId, today);
   const display = shown.map((v) => {
     const p = pending.get(v.id);
-    return p ? { ...v, trips: v.trips + p.trips, realTon: v.realTon + p.ton, untonnedTrips: v.untonnedTrips + p.untonned } : v;
+    return p
+      ? {
+          ...v,
+          trips: v.trips + p.trips,
+          realTon: v.realTon + p.ton,
+          untonnedTrips: v.untonnedTrips + p.untonned,
+        }
+      : v;
   });
   const waiting = queue.length;
   const total = display.reduce((s, v) => s + v.trips, 0);
   // Kantar tonu girilmişse o, girilmemiş seferler için araç kapasitesi
-  const tons = display.reduce((s, v) => s + v.realTon + (v.capacityTon ? v.capacityTon * v.untonnedTrips : 0), 0);
+  const tons = display.reduce(
+    (s, v) =>
+      s + v.realTon + (v.capacityTon ? v.capacityTon * v.untonnedTrips : 0),
+    0,
+  );
   const allReal = display.every((v) => v.untonnedTrips === 0);
 
   return (
@@ -242,9 +304,17 @@ export function TripCounter({ siteId, today, vehicles, routes }: Props) {
           <p className="text-xs text-muted">sefer</p>
         </div>
         <div className="card py-3">
-          <p className="text-xs text-muted">{allReal ? "Taşınan" : "Taşınan (tahmini)"}</p>
-          <p className="text-3xl font-extrabold tabular-nums">{tons ? formatTrNumber(tons, 1) : "—"}</p>
-          <p className="text-xs text-muted">{allReal ? "ton, kantar" : "ton; tonu girilmeyen seferler kapasiteyle"}</p>
+          <p className="text-xs text-muted">
+            {allReal ? "Taşınan" : "Taşınan (tahmini)"}
+          </p>
+          <p className="text-3xl font-extrabold tabular-nums">
+            {tons ? formatTrNumber(tons, 1) : "—"}
+          </p>
+          <p className="text-xs text-muted">
+            {allReal
+              ? "ton, kantar"
+              : "ton; tonu girilmeyen seferler kapasiteyle"}
+          </p>
         </div>
       </div>
 
@@ -261,7 +331,9 @@ export function TripCounter({ siteId, today, vehicles, routes }: Props) {
                 onClick={() => chooseRoute(r.id)}
                 aria-pressed={routeId === r.id}
                 className={`min-h-10 shrink-0 rounded-full border px-4 text-sm font-medium ${
-                  routeId === r.id ? "border-brand bg-brand text-white dark:text-black" : "border-line bg-surface"
+                  routeId === r.id
+                    ? "border-brand bg-brand text-white dark:text-black"
+                    : "border-line bg-surface"
                 }`}
               >
                 {r.name}
@@ -276,7 +348,12 @@ export function TripCounter({ siteId, today, vehicles, routes }: Props) {
           <Scale className="size-5 text-brand" aria-hidden />
           Her seferde kantar tonu gir
         </span>
-        <input type="checkbox" checked={tonMode} onChange={toggleTonMode} className="peer sr-only" />
+        <input
+          type="checkbox"
+          checked={tonMode}
+          onChange={toggleTonMode}
+          className="peer sr-only"
+        />
         <span
           aria-hidden
           className="relative h-7 w-12 rounded-full bg-line transition-colors after:absolute after:left-1 after:top-1 after:size-5 after:rounded-full after:bg-white after:transition-transform peer-checked:bg-brand peer-checked:after:translate-x-5"
@@ -285,27 +362,48 @@ export function TripCounter({ siteId, today, vehicles, routes }: Props) {
 
       {(waiting > 0 || !online) && (
         <div className="flex items-center gap-2 rounded-xl border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-200">
-          {online ? <RefreshCw className="size-5 shrink-0 animate-spin" aria-hidden /> : <CloudOff className="size-5 shrink-0" aria-hidden />}
+          {online ? (
+            <RefreshCw className="size-5 shrink-0 animate-spin" aria-hidden />
+          ) : (
+            <CloudOff className="size-5 shrink-0" aria-hidden />
+          )}
           <span>
             {online ? "Gönderiliyor… " : "İnternet yok. "}
-            {waiting > 0 ? `${waiting} sefer telefonda bekliyor, bağlantı gelince otomatik gönderilecek.` : "Seferler telefona kaydedilir."}
+            {waiting > 0
+              ? `${waiting} sefer telefonda bekliyor, bağlantı gelince otomatik gönderilecek.`
+              : "Seferler telefona kaydedilir."}
           </span>
         </div>
       )}
 
       <div role="status" aria-live="polite" className="min-h-5 text-sm">
-        {message && <span className={message.error ? "text-red-600" : "text-green-700 dark:text-green-400"}>{message.text}</span>}
+        {message && (
+          <span
+            className={
+              message.error
+                ? "text-red-600"
+                : "text-green-700 dark:text-green-400"
+            }
+          >
+            {message.text}
+          </span>
+        )}
       </div>
 
       <ul className="grid grid-cols-[minmax(0,1fr)] gap-3 sm:grid-cols-2">
         {display.map((v) => (
-          <li key={v.id} className={`card min-w-0 p-3 ${v.warning ? "border-red-400 dark:border-red-700" : ""}`}>
+          <li
+            key={v.id}
+            className={`card min-w-0 p-3 ${v.warning ? "border-red-400 dark:border-red-700" : ""}`}
+          >
             <div className="flex min-w-0 items-center gap-2">
               <div className="hidden size-11 shrink-0 items-center justify-center rounded-xl bg-brand/10 text-brand-strong min-[400px]:flex">
                 <Truck className="size-6" aria-hidden />
               </div>
               <div className="min-w-0 flex-1">
-                <p className="truncate text-lg font-bold tabular-nums">{v.plate}</p>
+                <p className="truncate text-lg font-bold tabular-nums">
+                  {v.plate}
+                </p>
                 <p className="truncate text-xs text-muted">
                   {v.realTon > 0 ? `${formatTrNumber(v.realTon, 1)} t` : v.type}
                   {v.lastAt && ` · son ${v.lastAt}`}
@@ -320,7 +418,10 @@ export function TripCounter({ siteId, today, vehicles, routes }: Props) {
               >
                 <Minus className="size-5" aria-hidden />
               </button>
-              <span className="w-9 text-center text-2xl font-extrabold tabular-nums" aria-label={`${v.trips} sefer`}>
+              <span
+                className="w-9 text-center text-2xl font-extrabold tabular-nums"
+                aria-label={`${v.trips} sefer`}
+              >
                 {v.trips}
               </span>
               <button
@@ -343,7 +444,10 @@ export function TripCounter({ siteId, today, vehicles, routes }: Props) {
       </ul>
 
       {tonFor && (
-        <div className="fixed inset-0 z-50 flex items-end bg-black/40 sm:items-center sm:justify-center" onClick={() => setTonFor(null)}>
+        <div
+          className="fixed inset-0 z-50 flex items-end bg-black/40 sm:items-center sm:justify-center"
+          onClick={() => setTonFor(null)}
+        >
           <form
             role="dialog"
             aria-modal="true"
@@ -374,7 +478,11 @@ export function TripCounter({ siteId, today, vehicles, routes }: Props) {
             <button type="submit" className="btn-primary w-full text-lg">
               Seferi kaydet
             </button>
-            <button type="button" onClick={() => confirmTon(true)} className="btn-secondary w-full">
+            <button
+              type="button"
+              onClick={() => confirmTon(true)}
+              className="btn-secondary w-full"
+            >
               Tonsuz kaydet
             </button>
           </form>

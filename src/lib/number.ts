@@ -10,7 +10,8 @@ export function parseTrNumber(input: string): number | null {
 
   let normalized: string;
   if (s.includes(",")) {
-    if (!/^-?\d{1,3}(\.\d{3})*(,\d+)?$/.test(s) && !/^-?\d+(,\d+)?$/.test(s)) return null;
+    if (!/^-?\d{1,3}(\.\d{3})*(,\d+)?$/.test(s) && !/^-?\d+(,\d+)?$/.test(s))
+      return null;
     normalized = s.replace(/\./g, "").replace(",", ".");
   } else if (/^-?\d{1,3}(\.\d{3})+$/.test(s)) {
     normalized = s.replace(/\./g, "");
@@ -33,7 +34,12 @@ export function decimalPlaces(n: number): number {
 }
 
 // Sayıyı Türkçe biçimde gösterir: 1234.5 → "1.234,5"
-export function formatTrNumber(n: number | null | undefined, maxDecimals = 3): string {
+export function formatTrNumber(
+  n: number | null | undefined,
+  maxDecimals = 3,
+): string {
   if (n === null || n === undefined) return "—";
-  return new Intl.NumberFormat("tr-TR", { maximumFractionDigits: maxDecimals }).format(n);
+  return new Intl.NumberFormat("tr-TR", {
+    maximumFractionDigits: maxDecimals,
+  }).format(n);
 }

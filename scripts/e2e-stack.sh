@@ -103,10 +103,11 @@ fi
 # --- Uygulamanın şeması ---
 for f in "$ROOT"/supabase/migrations/*.sql; do "${PSQL[@]}" -f "$f"; done
 
-# --- PostgREST ---
+# --- PostgREST --- (Supabase gibi bir yanıtta en fazla 1000 satır)
 PGRST_DB_URI="postgres://authenticator@127.0.0.1:$PG_PORT/postgres" \
 PGRST_DB_SCHEMAS=public PGRST_DB_ANON_ROLE=anon PGRST_JWT_SECRET="$JWT_SECRET" \
 PGRST_SERVER_HOST=127.0.0.1 PGRST_SERVER_PORT=$REST_PORT PGRST_LOG_LEVEL=warn \
+  PGRST_DB_MAX_ROWS=1000 \
   "$BIN/postgrest" > "$E2E/rest.log" 2>&1 &
 echo $! >> "$E2E/pids"
 

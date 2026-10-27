@@ -17,9 +17,17 @@ export default async function ReportPage({
   // Raporda giderler olduğu için saha personeline kapalı
   if (!canManage(tenant.role)) redirect("/panel");
 
-  const { data: sites } = await supabase.from("sites").select("id, name, status").eq("tenant_id", tenant.id).order("name");
+  const { data: sites } = await supabase
+    .from("sites")
+    .select("id, name, status")
+    .eq("tenant_id", tenant.id)
+    .order("name");
   if (!sites?.length) {
-    return <p className="card text-sm text-muted">Rapor alabilmek için önce bir şantiye ekleyin.</p>;
+    return (
+      <p className="card text-sm text-muted">
+        Rapor alabilmek için önce bir şantiye ekleyin.
+      </p>
+    );
   }
 
   const params = await searchParams;
@@ -27,13 +35,18 @@ export default async function ReportPage({
     params,
     sites.map((s) => s.id),
   );
-  const siteId = filters.siteId || (sites.find((s) => s.status === "active") ?? sites[0]).id;
+  const siteId =
+    filters.siteId || (sites.find((s) => s.status === "active") ?? sites[0]).id;
   const { from, to } = filters;
 
   const report = await loadReport(supabase, tenant, siteId, from, to);
   if (!report) redirect("/rapor");
   const { items, expenses, trips, totals } = report;
-  const qs = new URLSearchParams({ santiye: siteId, bas: from, bit: to }).toString();
+  const qs = new URLSearchParams({
+    santiye: siteId,
+    bas: from,
+    bit: to,
+  }).toString();
 
   return (
     <div className="space-y-5">
@@ -49,7 +62,13 @@ export default async function ReportPage({
         </div>
       </div>
 
-      <FilterBar sites={sites} siteId={siteId} from={from} to={to} allowAll={false} />
+      <FilterBar
+        sites={sites}
+        siteId={siteId}
+        from={from}
+        to={to}
+        allowAll={false}
+      />
 
       <div>
         <p className="text-lg font-semibold">{report.site.name}</p>
@@ -61,8 +80,16 @@ export default async function ReportPage({
       </div>
 
       <div className="grid gap-3 sm:grid-cols-3">
-        <Stat label="İmalat tutarı" value={formatTL(totals.amount)} hint="Sözleşme birim fiyatıyla, KDV hariç" />
-        <Stat label="Gider" value={formatTL(totals.expenseNet)} hint={`KDV hariç · KDV ${formatTL(totals.expenseVat)}`} />
+        <Stat
+          label="İmalat tutarı"
+          value={formatTL(totals.amount)}
+          hint="Sözleşme birim fiyatıyla, KDV hariç"
+        />
+        <Stat
+          label="Gider"
+          value={formatTL(totals.expenseNet)}
+          hint={`KDV hariç · KDV ${formatTL(totals.expenseVat)}`}
+        />
         <Stat
           label="Tutar − gider"
           value={formatTL(totals.difference)}
@@ -82,17 +109,24 @@ export default async function ReportPage({
               {items.map((i, idx) => (
                 <li key={idx} className="space-y-1 px-4 py-3 text-sm">
                   <p className="font-medium">
-                    {i.code && <span className="mr-2 text-muted">{i.code}</span>}
+                    {i.code && (
+                      <span className="mr-2 text-muted">{i.code}</span>
+                    )}
                     {i.name}
                   </p>
                   <div className="flex justify-between gap-3 tabular-nums">
                     <span>
-                      {formatTrNumber(i.quantity)} {unitLabel(i.unit)} × {i.unitPrice === null ? "—" : formatTL(i.unitPrice)}
+                      {formatTrNumber(i.quantity)} {unitLabel(i.unit)} ×{" "}
+                      {i.unitPrice === null ? "—" : formatTL(i.unitPrice)}
                     </span>
                     <span className="font-semibold">{formatTL(i.amount)}</span>
                   </div>
                   <p className="text-xs text-muted">
-                    Gerçekleşme: {i.progressPercent === null ? "—" : `%${formatTrNumber(i.progressPercent, 2)}`} · Birim maliyet:{" "}
+                    Gerçekleşme:{" "}
+                    {i.progressPercent === null
+                      ? "—"
+                      : `%${formatTrNumber(i.progressPercent, 2)}`}{" "}
+                    · Birim maliyet:{" "}
                     {i.unitCost === null ? "—" : formatTL(i.unitCost)}
                   </p>
                 </li>
@@ -118,7 +152,9 @@ export default async function ReportPage({
                   {items.map((i, idx) => (
                     <tr key={idx}>
                       <td className="px-3 py-2">
-                        {i.code && <span className="mr-2 text-muted">{i.code}</span>}
+                        {i.code && (
+                          <span className="mr-2 text-muted">{i.code}</span>
+                        )}
                         {i.name}
                       </td>
                       <td className="px-3 py-2 text-right whitespace-nowrap">
@@ -127,9 +163,13 @@ export default async function ReportPage({
                       <td className="px-3 py-2 text-right whitespace-nowrap">
                         {i.unitPrice === null ? "—" : formatTL(i.unitPrice)}
                       </td>
-                      <td className="px-3 py-2 text-right font-semibold whitespace-nowrap">{formatTL(i.amount)}</td>
+                      <td className="px-3 py-2 text-right font-semibold whitespace-nowrap">
+                        {formatTL(i.amount)}
+                      </td>
                       <td className="px-3 py-2 text-right whitespace-nowrap">
-                        {i.progressPercent === null ? "—" : `%${formatTrNumber(i.progressPercent, 2)}`}
+                        {i.progressPercent === null
+                          ? "—"
+                          : `%${formatTrNumber(i.progressPercent, 2)}`}
                       </td>
                       <td className="px-3 py-2 text-right whitespace-nowrap">
                         {i.unitCost === null ? "—" : formatTL(i.unitCost)}
@@ -142,7 +182,9 @@ export default async function ReportPage({
                     <td className="px-3 py-2" colSpan={3}>
                       Toplam
                     </td>
-                    <td className="px-3 py-2 text-right tabular-nums">{formatTL(totals.amount)}</td>
+                    <td className="px-3 py-2 text-right tabular-nums">
+                      {formatTL(totals.amount)}
+                    </td>
                     <td colSpan={2} />
                   </tr>
                 </tfoot>
@@ -151,7 +193,8 @@ export default async function ReportPage({
           </>
         )}
         <p className="text-xs text-muted">
-          Gerçekleşme = dönem miktarı ÷ planlanan miktar. Birim maliyet = iş kalemine bağlanmış gider ÷ dönem miktarı.
+          Gerçekleşme = dönem miktarı ÷ planlanan miktar. Birim maliyet = iş
+          kalemine bağlanmış gider ÷ dönem miktarı.
         </p>
       </section>
 
@@ -171,10 +214,20 @@ export default async function ReportPage({
                 </div>
               ))}
               <div className="mt-2 space-y-1 border-t border-line pt-2">
-                <Row label="İş kalemlerine bağlı" value={formatTL(totals.directCost)} />
-                <Row label="Genel gider" value={formatTL(totals.generalExpense)} />
+                <Row
+                  label="İş kalemlerine bağlı"
+                  value={formatTL(totals.directCost)}
+                />
+                <Row
+                  label="Genel gider"
+                  value={formatTL(totals.generalExpense)}
+                />
                 <Row label="KDV" value={formatTL(totals.expenseVat)} />
-                <Row label="KDV dahil toplam" value={formatTL(totals.expenseNet + totals.expenseVat)} strong />
+                <Row
+                  label="KDV dahil toplam"
+                  value={formatTL(totals.expenseNet + totals.expenseVat)}
+                  strong
+                />
               </div>
             </div>
           )}
@@ -189,10 +242,12 @@ export default async function ReportPage({
               {trips.map((t) => (
                 <div key={t.plate} className="flex justify-between gap-3">
                   <span>
-                    {t.plate} <span className="text-muted">{t.vehicleType}</span>
+                    {t.plate}{" "}
+                    <span className="text-muted">{t.vehicleType}</span>
                   </span>
                   <span className="tabular-nums">
-                    {t.trips} sefer{t.tonnage > 0 && ` · ${formatTrNumber(t.tonnage)} t`}
+                    {t.trips} sefer
+                    {t.tonnage > 0 && ` · ${formatTrNumber(t.tonnage)} t`}
                   </span>
                 </div>
               ))}
@@ -213,33 +268,59 @@ export default async function ReportPage({
           <h2 className="text-lg font-bold">Makineler</h2>
           <div className="card space-y-1 text-sm">
             {report.machines.map((m) => (
-              <div key={m.plate} className={`flex justify-between gap-3 ${m.over ? "font-semibold text-red-700 dark:text-red-400" : ""}`}>
+              <div
+                key={m.plate}
+                className={`flex justify-between gap-3 ${m.over ? "font-semibold text-red-700 dark:text-red-400" : ""}`}
+              >
                 <span>
-                  {m.plate} <span className="font-normal text-muted">{m.vehicleType}</span>
+                  {m.plate}{" "}
+                  <span className="font-normal text-muted">
+                    {m.vehicleType}
+                  </span>
                 </span>
                 <span className="tabular-nums">
-                  {formatTrNumber(m.hours, 2)} sa · {formatTrNumber(m.fuel, 0)} L
-                  {m.lph !== null && ` · ${formatTrNumber(m.lph, 1)} L/sa`}
+                  {formatTrNumber(m.hours, 2)} sa · {formatTrNumber(m.fuel, 0)}{" "}
+                  L{m.lph !== null && ` · ${formatTrNumber(m.lph, 1)} L/sa`}
                   {m.over && " ⚠"}
                 </span>
               </div>
             ))}
             <div className="mt-2 border-t border-line pt-2">
-              <Row label="Toplam" value={`${formatTrNumber(totals.machineHours, 2)} saat · ${formatTrNumber(totals.fuelLiters, 0)} L`} strong />
+              <Row
+                label="Toplam"
+                value={`${formatTrNumber(totals.machineHours, 2)} saat · ${formatTrNumber(totals.fuelLiters, 0)} L`}
+                strong
+              />
             </div>
           </div>
         </section>
       )}
 
       <p className="rounded-md bg-amber-50 p-3 text-xs text-amber-900">
-        Bu rapor iç takip içindir, resmî hakediş yerine geçmez. Fiyat farkı, kesintiler, teminat ve vergiler hesaba katılmaz.
+        Bu rapor iç takip içindir, resmî hakediş yerine geçmez. Fiyat farkı,
+        kesintiler, teminat ve vergiler hesaba katılmaz.
       </p>
     </div>
   );
 }
 
-function Stat({ label, value, hint, tone }: { label: string; value: string; hint?: string; tone?: "good" | "bad" }) {
-  const color = tone === "bad" ? "text-red-700 dark:text-red-400" : tone === "good" ? "text-green-700 dark:text-green-400" : "";
+function Stat({
+  label,
+  value,
+  hint,
+  tone,
+}: {
+  label: string;
+  value: string;
+  hint?: string;
+  tone?: "good" | "bad";
+}) {
+  const color =
+    tone === "bad"
+      ? "text-red-700 dark:text-red-400"
+      : tone === "good"
+        ? "text-green-700 dark:text-green-400"
+        : "";
   return (
     <div className="card">
       <p className="text-sm text-muted">{label}</p>
@@ -249,9 +330,19 @@ function Stat({ label, value, hint, tone }: { label: string; value: string; hint
   );
 }
 
-function Row({ label, value, strong }: { label: string; value: string; strong?: boolean }) {
+function Row({
+  label,
+  value,
+  strong,
+}: {
+  label: string;
+  value: string;
+  strong?: boolean;
+}) {
   return (
-    <div className={`flex justify-between gap-3 ${strong ? "font-semibold" : ""}`}>
+    <div
+      className={`flex justify-between gap-3 ${strong ? "font-semibold" : ""}`}
+    >
       <span className={strong ? "" : "text-muted"}>{label}</span>
       <span className="tabular-nums">{value}</span>
     </div>

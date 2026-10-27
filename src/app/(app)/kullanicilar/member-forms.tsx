@@ -1,12 +1,21 @@
 "use client";
 
 import { useActionState } from "react";
-import { Field, FormError, FormSuccess, SelectField, SubmitButton } from "@/components/form";
+import {
+  Field,
+  FormError,
+  FormSuccess,
+  SelectField,
+  SubmitButton,
+} from "@/components/form";
 import type { MemberRole } from "@/lib/database.types";
 import { addMember, changeRole } from "./actions";
 
 const ROLE_OPTIONS = [
-  { value: "field", label: "Saha personeli: imalat ve sefer girer, gider göremez" },
+  {
+    value: "field",
+    label: "Saha personeli: imalat ve sefer girer, gider göremez",
+  },
   { value: "manager", label: "Yönetici: tüm kayıtlar, giderler, raporlar" },
   { value: "owner", label: "Firma sahibi: yukarıdakiler + kullanıcı yönetimi" },
 ];
@@ -17,14 +26,37 @@ export function AddMemberForm() {
     <form key={state?.ok} action={action} className="space-y-3" noValidate>
       <FormSuccess state={state} />
       <FormError state={state} />
-      <Field idPrefix="mb" name="email" label="E-posta" type="email" autoComplete="off" hint="Kişi önce Hafriyol'a kayıt olmuş olmalı" state={state} required />
-      <SelectField idPrefix="mb" name="role" label="Rol" options={ROLE_OPTIONS} defaultValue="field" state={state} required />
+      <Field
+        idPrefix="mb"
+        name="email"
+        label="E-posta"
+        type="email"
+        autoComplete="off"
+        hint="Kişi önce Hafriyol'a kayıt olmuş olmalı"
+        state={state}
+        required
+      />
+      <SelectField
+        idPrefix="mb"
+        name="role"
+        label="Rol"
+        options={ROLE_OPTIONS}
+        defaultValue="field"
+        state={state}
+        required
+      />
       <SubmitButton pendingText="Ekleniyor…">Kullanıcı ekle</SubmitButton>
     </form>
   );
 }
 
-export function RoleSelect({ userId, role }: { userId: string; role: MemberRole }) {
+export function RoleSelect({
+  userId,
+  role,
+}: {
+  userId: string;
+  role: MemberRole;
+}) {
   const [state, action] = useActionState(changeRole, null);
   return (
     <form action={action} className="space-y-1">

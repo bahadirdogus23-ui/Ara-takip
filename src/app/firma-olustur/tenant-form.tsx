@@ -9,7 +9,13 @@ export function TenantForm() {
   return (
     <form action={action} className="space-y-4" noValidate>
       <FormError state={state} />
-      <Field name="name" label="Firma adı" autoComplete="organization" state={state} required />
+      <Field
+        name="name"
+        label="Firma adı"
+        autoComplete="organization"
+        state={state}
+        required
+      />
       <SubmitButton pendingText="Oluşturuluyor…">Firmayı oluştur</SubmitButton>
     </form>
   );

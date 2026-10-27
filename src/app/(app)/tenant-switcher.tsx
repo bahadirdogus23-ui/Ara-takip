@@ -3,7 +3,13 @@
 import type { TenantOption } from "@/lib/context";
 import { switchTenant } from "./actions";
 
-export function TenantSwitcher({ tenants, activeId }: { tenants: TenantOption[]; activeId: string }) {
+export function TenantSwitcher({
+  tenants,
+  activeId,
+}: {
+  tenants: TenantOption[];
+  activeId: string;
+}) {
   return (
     <form action={switchTenant}>
       <label htmlFor="tenant" className="sr-only">

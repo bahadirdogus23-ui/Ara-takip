@@ -1,6 +1,12 @@
 // Supabase'ten üretildi (generate_typescript_types). Şema değişince yeniden üretin.
 
-export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
+export type Json =
+  | string
+  | number
+  | boolean
+  | null
+  | { [key: string]: Json | undefined }
+  | Json[];
 
 type Rel = {
   foreignKeyName: string;
@@ -156,7 +162,9 @@ export type Database = {
           tenant_id: string;
           work_item_id: string;
         };
-        Update: Partial<Database["public"]["Tables"]["production_entries"]["Insert"]>;
+        Update: Partial<
+          Database["public"]["Tables"]["production_entries"]["Insert"]
+        >;
         Relationships: Rel[];
       };
       routes: {
@@ -321,12 +329,61 @@ export type Database = {
     Functions: {
       create_tenant: { Args: { p_name: string }; Returns: string };
       add_member: {
-        Args: { p_tenant: string; p_email: string; p_role: Database["public"]["Enums"]["member_role"] };
+        Args: {
+          p_tenant: string;
+          p_email: string;
+          p_role: Database["public"]["Enums"]["member_role"];
+        };
         Returns: undefined;
       };
       tenant_members: {
         Args: { p_tenant: string };
-        Returns: { user_id: string; email: string; role: Database["public"]["Enums"]["member_role"]; created_at: string }[];
+        Returns: {
+          user_id: string;
+          email: string;
+          role: Database["public"]["Enums"]["member_role"];
+          created_at: string;
+        }[];
+      };
+      trip_day_summary: {
+        Args: {
+          p_tenant: string;
+          p_site: string | null;
+          p_from: string;
+          p_to: string;
+        };
+        Returns: {
+          site_id: string;
+          vehicle_id: string;
+          route_id: string | null;
+          entry_date: string;
+          trips: number;
+          tonnage: number;
+          untonned_trips: number;
+          last_at: string;
+          last_id: string;
+          last_count: number;
+          my_last_id: string | null;
+          my_last_count: number | null;
+          notes: string[];
+        }[];
+      };
+      machine_day_summary: {
+        Args: {
+          p_tenant: string;
+          p_site: string | null;
+          p_from: string;
+          p_to: string;
+        };
+        Returns: {
+          site_id: string;
+          vehicle_id: string;
+          log_date: string;
+          hours: number;
+          fuel_liters: number;
+          paired_hours: number;
+          paired_fuel: number;
+        }[];
       };
       expense_summary: {
         Args: { p_from: string; p_site: string; p_to: string };
@@ -370,5 +427,6 @@ export type Database = {
   };
 };
 
-export type Tables<T extends keyof Database["public"]["Tables"]> = Database["public"]["Tables"][T]["Row"];
+export type Tables<T extends keyof Database["public"]["Tables"]> =
+  Database["public"]["Tables"][T]["Row"];
 export type MemberRole = Database["public"]["Enums"]["member_role"];

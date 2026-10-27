@@ -17,9 +17,12 @@ describe("Türkçe sayı ayrıştırma", () => {
     expect(parseTrNumber(input)).toBe(expected);
   });
 
-  it.each(["", "abc", "1,2,3", "12a", "1.23,4", "--1", ",5,"])("%s geçersiz", (input) => {
-    expect(parseTrNumber(input)).toBeNull();
-  });
+  it.each(["", "abc", "1,2,3", "12a", "1.23,4", "--1", ",5,"])(
+    "%s geçersiz",
+    (input) => {
+      expect(parseTrNumber(input)).toBeNull();
+    },
+  );
 
   it("sayıyı Türkçe gösterir", () => {
     expect(formatTrNumber(1234.5)).toBe("1.234,5");

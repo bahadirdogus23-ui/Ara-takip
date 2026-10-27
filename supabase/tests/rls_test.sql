@@ -345,4 +345,17 @@ insert into public.routes(tenant_id, site_id, name, work_item_id) values (:'tena
 reset role;
 select pg_temp.check(not exists (select 1 from public.routes where name = 'Yanlış'), 'T18c Güzergâh başka firmanın iş kalemine bağlanamaz');
 
+-- T19: Gün bazında sefer ve makine özeti (1000 satır sınırına takılmadan toplam)
+select pg_temp.login('00000000-0000-0000-0000-00000000000a');
+select pg_temp.check(s.trips = 5 and s.untonned_trips = 5 and s.my_last_id is not null, 'T19a Sefer özeti aynı gün/araç/güzergâhı tek satırda toplar (5 sefer)')
+  from public.trip_day_summary(:'tenant_a', :'site_a', '2026-10-26', '2026-10-26') s where s.route_id = :'route_sefer';
+select pg_temp.check(s.trips = 2 and s.tonnage = 24.5 and s.untonned_trips = 1, 'T19b Ton toplamı ve tonsuz sefer sayısı ayrı verilir')
+  from public.trip_day_summary(:'tenant_a', :'site_a', '2026-10-26', '2026-10-26') s where s.route_id = :'route_ton';
+select pg_temp.check((select count(*) from public.machine_day_summary(:'tenant_a', null, '2026-10-01', '2026-10-31')) >= 1, 'T19c Makine özeti firma geneli çalışır');
+reset role;
+select pg_temp.login('00000000-0000-0000-0000-00000000000b');
+select pg_temp.check((select count(*) from public.trip_day_summary(:'tenant_a', null, '2026-01-01', '2026-12-31')) = 0, 'T19d Başka firma sefer özetini göremez');
+select pg_temp.check((select count(*) from public.machine_day_summary(:'tenant_a', null, '2026-01-01', '2026-12-31')) = 0, 'T19e Başka firma makine özetini göremez');
+reset role;
+
 \echo 'TÜM VERİTABANI TESTLERİ GEÇTİ'

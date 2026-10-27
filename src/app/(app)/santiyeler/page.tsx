@@ -32,11 +32,16 @@ export default async function SitesPage() {
         <ul className="divide-y divide-line overflow-hidden rounded-xl border border-line bg-surface">
           {sites.map((s) => (
             <li key={s.id}>
-              <Link href={`/santiyeler/${s.id}`} className="flex items-center gap-3 px-4 py-3 hover:bg-bg">
+              <Link
+                href={`/santiyeler/${s.id}`}
+                className="flex items-center gap-3 px-4 py-3 hover:bg-bg"
+              >
                 <div className="min-w-0 flex-1">
                   <p className="truncate font-semibold">{s.name}</p>
                   <p className="truncate text-sm text-muted">
-                    {[s.code, s.employer, s.location].filter(Boolean).join(" · ") || "—"}
+                    {[s.code, s.employer, s.location]
+                      .filter(Boolean)
+                      .join(" · ") || "—"}
                   </p>
                   <p className="text-xs text-muted">
                     {formatDateTR(s.start_date)} – {formatDateTR(s.end_date)}

@@ -24,7 +24,12 @@ export function SiteDatePicker({
         <label htmlFor="santiye" className="block text-sm font-medium">
           Şantiye
         </label>
-        <select id="santiye" value={siteId} onChange={(e) => go(e.target.value, date)} className="input">
+        <select
+          id="santiye"
+          value={siteId}
+          onChange={(e) => go(e.target.value, date)}
+          className="input"
+        >
           {sites.map((s) => (
             <option key={s.id} value={s.id}>
               {s.name}

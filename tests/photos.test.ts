@@ -13,8 +13,12 @@ describe("fotoğraf yolu", () => {
   });
 
   it("başka firma/şantiye ya da kaçamak yolları reddeder", () => {
-    expect(isValidPhotoPath(photoPath(S, S, "2026-10-25", F), T, S)).toBe(false);
-    expect(isValidPhotoPath(`${T}/${S}/2026-10-25/../../x.jpg`, T, S)).toBe(false);
+    expect(isValidPhotoPath(photoPath(S, S, "2026-10-25", F), T, S)).toBe(
+      false,
+    );
+    expect(isValidPhotoPath(`${T}/${S}/2026-10-25/../../x.jpg`, T, S)).toBe(
+      false,
+    );
     expect(isValidPhotoPath(`${T}/${S}/2026-10-25/${F}.php`, T, S)).toBe(false);
   });
 });

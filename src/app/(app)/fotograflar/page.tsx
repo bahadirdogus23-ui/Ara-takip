@@ -8,22 +8,43 @@ import { pickSite } from "@/lib/site-pref";
 
 export const metadata = { title: "Fotoğraflar" };
 
-export default async function PhotosPage({ searchParams }: { searchParams: Promise<{ santiye?: string }> }) {
+export default async function PhotosPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ santiye?: string }>;
+}) {
   const { santiye } = await searchParams;
   const { supabase, user, tenant } = await getContext();
-  const { data: sites } = await supabase.from("sites").select("id, name").eq("tenant_id", tenant.id).eq("status", "active").order("name");
+  const { data: sites } = await supabase
+    .from("sites")
+    .select("id, name")
+    .eq("tenant_id", tenant.id)
+    .eq("status", "active")
+    .order("name");
   const site = await pickSite(sites ?? [], santiye);
-  if (!site) return <p className="card text-sm text-muted">Fotoğraf eklemek için devam eden bir şantiye olmalı.</p>;
+  if (!site)
+    return (
+      <p className="card text-sm text-muted">
+        Fotoğraf eklemek için devam eden bir şantiye olmalı.
+      </p>
+    );
 
   const today = isoDateTR();
   const month = monthRangeTR();
-  const photos = await loadPhotos(supabase, { siteId: site.id, ...month }, (by) => canManage(tenant.role) || by === user.id);
+  const photos = await loadPhotos(
+    supabase,
+    { siteId: site.id, ...month },
+    (by) => canManage(tenant.role) || by === user.id,
+  );
 
   return (
     <div className="mx-auto max-w-2xl space-y-4">
       <div>
         <h1 className="text-2xl font-bold">Fotoğraflar</h1>
-        <p className="text-sm text-muted">Kantar fişi, saha ve hasar fotoğrafları · {formatDateTR(month.from)} – {formatDateTR(month.to)}</p>
+        <p className="text-sm text-muted">
+          Kantar fişi, saha ve hasar fotoğrafları · {formatDateTR(month.from)} –{" "}
+          {formatDateTR(month.to)}
+        </p>
       </div>
       <SitePicker sites={sites ?? []} siteId={site.id} />
       <section className="card">

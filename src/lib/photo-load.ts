@@ -20,7 +20,12 @@ export async function loadPhotos(
     .order("created_at", { ascending: false })
     .limit(limit);
   if (!rows?.length) return [];
-  const { data: signed } = await supabase.storage.from(PHOTO_BUCKET).createSignedUrls(rows.map((r) => r.storage_path), 3600);
+  const { data: signed } = await supabase.storage
+    .from(PHOTO_BUCKET)
+    .createSignedUrls(
+      rows.map((r) => r.storage_path),
+      3600,
+    );
   const urlByPath = new Map((signed ?? []).map((s) => [s.path, s.signedUrl]));
   return rows.map((r) => ({
     id: r.id,

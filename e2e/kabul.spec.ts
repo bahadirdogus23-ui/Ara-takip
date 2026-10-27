@@ -1,3 +1,4 @@
+import { execSync } from "node:child_process";
 import ExcelJS from "exceljs";
 import { expect, test, type Browser, type Page } from "@playwright/test";
 
@@ -612,6 +613,60 @@ test("K14: nakliyecinin bir günü (kullanıcı geri bildirimi)", async ({
   await expect(
     page.getByRole("button", { name: "Son seferi sil" }),
   ).toHaveCount(2);
+  await page.context().close();
+});
+
+test("K15: 1200 seferde rapor, hakediş ve kayıtlar eksiksiz (1000 satır sınırı)", async ({
+  browser,
+}) => {
+  test.setTimeout(180_000);
+  const page = await newPage(browser);
+  const u = { email: `filo-${run}@hafriyol.local`, password: "Sifre-12345" };
+  const site = `Filo Şantiyesi ${run}`;
+  await signUp(page, u);
+  await createTenant(page, "Büyük Filo Hafriyat");
+  await page.locator("#site_name").fill(site);
+  await page
+    .locator("#vehicles")
+    .fill(
+      Array.from(
+        { length: 10 },
+        (_, i) =>
+          `34 FL ${String(i + 1).padStart(3, "0")}, Kamyon, 25, kiralık 9000`,
+      ).join("\n"),
+    );
+  await page.getByRole("button", { name: "Kurulumu bitir" }).click();
+  await page.waitForURL("**/sefer?hazir=1");
+
+  // 10 kiralık kamyon × 12 gün × günde 10 dokunuş = 1200 satır (yerel PostgREST de 1000 satırla sınırlı)
+  execSync(
+    "psql -h 127.0.0.1 -p 54339 -U postgres -d postgres -v ON_ERROR_STOP=1 -q",
+    {
+      input: `insert into public.trip_entries(tenant_id, site_id, vehicle_id, route_id, entry_date, trip_count, created_by)
+      select s.tenant_id, s.id, v.id, r.id, d::date, 1, us.id
+      from public.sites s join public.routes r on r.site_id = s.id join public.vehicles v on v.tenant_id = s.tenant_id
+      cross join generate_series('2026-01-05'::date, '2026-01-16'::date, interval '1 day') d
+      cross join generate_series(1, 10) n join auth.users us on us.email = '${u.email}'
+      where s.name = '${site}';`,
+    },
+  );
+  const range = "bas=2026-01-01&bit=2026-01-31";
+
+  await page.goto(`/rapor?${range}`);
+  await expect(
+    page.getByText("1200 sefer", { exact: true }).first(),
+  ).toBeVisible();
+  await expect(page.getByText("1.200 sefer ×")).toBeVisible();
+  await expect(page.getByText("₺1.080.000,00").first()).toBeVisible();
+
+  await page.goto(`/hakedis?${range}`);
+  await expect(page.getByText("₺1.080.000,00").first()).toBeVisible();
+  await expect(
+    page.getByText("Günlük kira · 12 gün × ₺9.000,00").first(),
+  ).toBeVisible();
+
+  await page.goto(`/kayitlar?tur=sefer&${range}`);
+  await expect(page.getByText("Toplam 1200 sefer")).toBeVisible();
   await page.context().close();
 });
 

@@ -11,7 +11,10 @@ export default async function SetupPage() {
     <div className="mx-auto max-w-2xl space-y-4">
       <div>
         <h1 className="text-2xl font-bold">Hızlı kurulum</h1>
-        <p className="text-sm text-muted">Bir dakikada şantiyenizi, işlerinizi ve araçlarınızı ekleyin; hemen sefer saymaya başlayın.</p>
+        <p className="text-sm text-muted">
+          Bir dakikada şantiyenizi, işlerinizi ve araçlarınızı ekleyin; hemen
+          sefer saymaya başlayın.
+        </p>
       </div>
       <div className="card">
         <SetupForm />

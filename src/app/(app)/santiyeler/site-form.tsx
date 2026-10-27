@@ -15,32 +15,75 @@ export function SiteForm({ site }: { site?: Tables<"sites"> }) {
       <FormError state={state} />
       {site && <input type="hidden" name="id" value={site.id} />}
 
-      <Field name="name" label="Şantiye adı" defaultValue={site?.name} state={state} required />
+      <Field
+        name="name"
+        label="Şantiye adı"
+        defaultValue={site?.name}
+        state={state}
+        required
+      />
       <div className="grid gap-4 sm:grid-cols-2">
-        <Field name="code" label="Kod / ihale no" defaultValue={site?.code} state={state} />
-        <Field name="employer" label="İşveren" defaultValue={site?.employer} state={state} hint="Ör. belediye, KGM, özel firma" />
+        <Field
+          name="code"
+          label="Kod / ihale no"
+          defaultValue={site?.code}
+          state={state}
+        />
+        <Field
+          name="employer"
+          label="İşveren"
+          defaultValue={site?.employer}
+          state={state}
+          hint="Ör. belediye, KGM, özel firma"
+        />
       </div>
-      <Field name="location" label="Konum" defaultValue={site?.location} state={state} />
+      <Field
+        name="location"
+        label="Konum"
+        defaultValue={site?.location}
+        state={state}
+      />
       <div className="grid gap-4 sm:grid-cols-2">
-        <Field name="start_date" label="Başlangıç" type="date" defaultValue={site?.start_date} state={state} />
-        <Field name="end_date" label="Bitiş" type="date" defaultValue={site?.end_date} state={state} />
+        <Field
+          name="start_date"
+          label="Başlangıç"
+          type="date"
+          defaultValue={site?.start_date}
+          state={state}
+        />
+        <Field
+          name="end_date"
+          label="Bitiş"
+          type="date"
+          defaultValue={site?.end_date}
+          state={state}
+        />
       </div>
 
       <div className="space-y-1">
         <label htmlFor="status" className="block text-sm font-medium">
           Durum
         </label>
-        <select id="status" name="status" defaultValue={status} className="input">
+        <select
+          id="status"
+          name="status"
+          defaultValue={status}
+          className="input"
+        >
           {Object.entries(SITE_STATUSES).map(([value, label]) => (
             <option key={value} value={value}>
               {label}
             </option>
           ))}
         </select>
-        {state?.fieldErrors?.status && <p className="text-sm text-red-600">{state.fieldErrors.status}</p>}
+        {state?.fieldErrors?.status && (
+          <p className="text-sm text-red-600">{state.fieldErrors.status}</p>
+        )}
       </div>
 
-      <SubmitButton>{site ? "Değişiklikleri kaydet" : "Şantiyeyi ekle"}</SubmitButton>
+      <SubmitButton>
+        {site ? "Değişiklikleri kaydet" : "Şantiyeyi ekle"}
+      </SubmitButton>
     </form>
   );
 }

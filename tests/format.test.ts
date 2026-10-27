@@ -8,8 +8,14 @@ describe("tarih ve para biçimleri", () => {
   });
 
   it("ay aralığını doğru verir, artık yılı dahil", () => {
-    expect(monthRangeTR(new Date("2028-02-10T09:00:00Z"))).toEqual({ from: "2028-02-01", to: "2028-02-29" });
-    expect(monthRangeTR(new Date("2026-12-15T09:00:00Z"))).toEqual({ from: "2026-12-01", to: "2026-12-31" });
+    expect(monthRangeTR(new Date("2028-02-10T09:00:00Z"))).toEqual({
+      from: "2028-02-01",
+      to: "2028-02-29",
+    });
+    expect(monthRangeTR(new Date("2026-12-15T09:00:00Z"))).toEqual({
+      from: "2026-12-01",
+      to: "2026-12-31",
+    });
   });
 
   it("TL biçimi Türkçe ayraç kullanır", () => {

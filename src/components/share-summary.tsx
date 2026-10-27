@@ -16,14 +16,25 @@ export function ShareSummary({ text }: { text: string }) {
 
   return (
     <div className="space-y-3">
-      <pre className="max-h-64 overflow-auto whitespace-pre-wrap rounded-lg bg-bg p-3 font-sans text-sm">{text}</pre>
+      <pre className="max-h-64 overflow-auto whitespace-pre-wrap rounded-lg bg-bg p-3 font-sans text-sm">
+        {text}
+      </pre>
       <div className="flex flex-wrap gap-2">
-        <a href={whatsappUrl(text)} target="_blank" rel="noopener noreferrer" className="btn-primary flex-1 gap-2 bg-[#1fa855] hover:bg-[#178a45]">
+        <a
+          href={whatsappUrl(text)}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="btn-primary flex-1 gap-2 bg-[#1fa855] hover:bg-[#178a45]"
+        >
           <MessageCircle className="size-5" aria-hidden />
           WhatsApp&apos;a gönder
         </a>
         {canShare && (
-          <button type="button" onClick={() => navigator.share({ text }).catch(() => {})} className="btn-secondary gap-2">
+          <button
+            type="button"
+            onClick={() => navigator.share({ text }).catch(() => {})}
+            className="btn-secondary gap-2"
+          >
             <Share2 className="size-5" aria-hidden />
             Paylaş
           </button>

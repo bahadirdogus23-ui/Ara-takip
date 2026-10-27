@@ -4,9 +4,16 @@ import { ROLE_LABELS, canManage, getContext } from "@/lib/context";
 import { BottomNav, DesktopNav } from "./nav";
 import { TenantSwitcher } from "./tenant-switcher";
 
-export default async function AppLayout({ children }: { children: React.ReactNode }) {
+export default async function AppLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   const { user, tenant, tenants } = await getContext();
-  const access = { manager: canManage(tenant.role), owner: tenant.role === "owner" };
+  const access = {
+    manager: canManage(tenant.role),
+    owner: tenant.role === "owner",
+  };
 
   return (
     <div className="min-h-dvh">
@@ -31,7 +38,9 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         </div>
         <DesktopNav {...access} />
       </header>
-      <main className="mx-auto max-w-5xl px-4 pt-5 pb-28 md:pb-10">{children}</main>
+      <main className="mx-auto max-w-5xl px-4 pt-5 pb-28 md:pb-10">
+        {children}
+      </main>
       <BottomNav />
     </div>
   );

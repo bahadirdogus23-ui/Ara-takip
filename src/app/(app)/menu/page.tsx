@@ -11,12 +11,21 @@ export default async function MenuPage() {
   return (
     <div className="mx-auto max-w-lg space-y-4">
       <h1 className="text-2xl font-bold">Menü</h1>
-      <MenuList manager={canManage(tenant.role)} owner={tenant.role === "owner"} />
-      <Link href="/firma-olustur" className="card flex items-center justify-between py-4 text-sm font-medium">
+      <MenuList
+        manager={canManage(tenant.role)}
+        owner={tenant.role === "owner"}
+      />
+      <Link
+        href="/firma-olustur"
+        className="card flex items-center justify-between py-4 text-sm font-medium"
+      >
         Başka bir firma ekle
         <ChevronRight className="size-5 text-muted" aria-hidden />
       </Link>
-      <SignOutButton className="btn-secondary w-full gap-2 text-red-700 dark:text-red-400" label="Çıkış yap" />
+      <SignOutButton
+        className="btn-secondary w-full gap-2 text-red-700 dark:text-red-400"
+        label="Çıkış yap"
+      />
     </div>
   );
 }

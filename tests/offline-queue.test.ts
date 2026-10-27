@@ -1,7 +1,19 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { pendingByVehicle, QUEUE_KEY, readQueue, withoutLastFor, writeQueue, type QueuedTap } from "@/lib/offline-queue";
+import {
+  pendingByVehicle,
+  QUEUE_KEY,
+  readQueue,
+  withoutLastFor,
+  writeQueue,
+  type QueuedTap,
+} from "@/lib/offline-queue";
 
-const tap = (vehicleId: string, requestId: string, entryDate = "2026-10-25", siteId = "s1"): QueuedTap => ({
+const tap = (
+  vehicleId: string,
+  requestId: string,
+  entryDate = "2026-10-25",
+  siteId = "s1",
+): QueuedTap => ({
   siteId,
   vehicleId,
   routeId: null,

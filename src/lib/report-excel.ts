@@ -6,23 +6,42 @@ const TL = '#,##0.00 "₺"';
 const QTY = "#,##0.###";
 const PCT = '0.00"%"';
 
-function header(sheet: ExcelJS.Worksheet, columns: { header: string; key: string; width: number; numFmt?: string }[]) {
-  sheet.columns = columns.map((c) => ({ header: c.header, key: c.key, width: c.width, style: c.numFmt ? { numFmt: c.numFmt } : {} }));
+function header(
+  sheet: ExcelJS.Worksheet,
+  columns: { header: string; key: string; width: number; numFmt?: string }[],
+) {
+  sheet.columns = columns.map((c) => ({
+    header: c.header,
+    key: c.key,
+    width: c.width,
+    style: c.numFmt ? { numFmt: c.numFmt } : {},
+  }));
   const row = sheet.getRow(1);
   row.font = { bold: true };
-  row.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFF3E8D6" } };
+  row.fill = {
+    type: "pattern",
+    pattern: "solid",
+    fgColor: { argb: "FFF3E8D6" },
+  };
   sheet.views = [{ state: "frozen", ySplit: 1 }];
 }
 
 // Toplam satırı: formül + hesaplanmış sonuç (formülü hesaplamayan görüntüleyiciler için)
-function totalRow(sheet: ExcelJS.Worksheet, label: string, sums: Record<string, number>) {
+function totalRow(
+  sheet: ExcelJS.Worksheet,
+  label: string,
+  sums: Record<string, number>,
+) {
   const last = sheet.rowCount;
   const row = sheet.addRow({});
   row.getCell(1).value = label;
   for (const [key, result] of Object.entries(sums)) {
     const col = sheet.getColumn(key);
     const letter = col.letter;
-    row.getCell(col.number).value = last >= 2 ? { formula: `SUM(${letter}2:${letter}${last})`, result } : result;
+    row.getCell(col.number).value =
+      last >= 2
+        ? { formula: `SUM(${letter}2:${letter}${last})`, result }
+        : result;
   }
   row.font = { bold: true };
   row.border = { top: { style: "thin" } };
@@ -60,7 +79,10 @@ export async function buildReportWorkbook(r: Report): Promise<Uint8Array> {
   }
   s.getColumn(1).font = { bold: true };
   s.addRow([]);
-  s.addRow(["Bu rapor iç takip içindir, resmî hakediş yerine geçmez."]).font = { italic: true, color: { argb: "FF8A5A00" } };
+  s.addRow(["Bu rapor iç takip içindir, resmî hakediş yerine geçmez."]).font = {
+    italic: true,
+    color: { argb: "FF8A5A00" },
+  };
 
   // İmalat
   const p = wb.addWorksheet("İmalat");
@@ -71,13 +93,21 @@ export async function buildReportWorkbook(r: Report): Promise<Uint8Array> {
     { header: "Miktar", key: "quantity", width: 14, numFmt: QTY },
     { header: "Birim fiyat", key: "unitPrice", width: 14, numFmt: TL },
     { header: "Tutar", key: "amount", width: 16, numFmt: TL },
-    { header: "Planlanan miktar", key: "plannedQuantity", width: 16, numFmt: QTY },
+    {
+      header: "Planlanan miktar",
+      key: "plannedQuantity",
+      width: 16,
+      numFmt: QTY,
+    },
     { header: "Gerçekleşme", key: "progressPercent", width: 13, numFmt: PCT },
     { header: "Doğrudan gider", key: "directCost", width: 16, numFmt: TL },
     { header: "Birim maliyet", key: "unitCost", width: 14, numFmt: TL },
   ]);
   for (const i of r.items) p.addRow({ ...i, unit: unitLabel(i.unit) });
-  totalRow(p, "Toplam", { amount: r.totals.amount, directCost: r.totals.directCost });
+  totalRow(p, "Toplam", {
+    amount: r.totals.amount,
+    directCost: r.totals.directCost,
+  });
   p.autoFilter = { from: "A1", to: "J1" };
 
   // Giderler
@@ -120,9 +150,16 @@ export async function buildReportWorkbook(r: Report): Promise<Uint8Array> {
   ]);
   for (const x of r.machines) {
     const row = m.addRow({ ...x, overText: x.over ? "EVET" : "" });
-    if (x.over) row.getCell("overText").font = { bold: true, color: { argb: "FFB91C1C" } };
+    if (x.over)
+      row.getCell("overText").font = {
+        bold: true,
+        color: { argb: "FFB91C1C" },
+      };
   }
-  totalRow(m, "Toplam", { hours: r.totals.machineHours, fuel: r.totals.fuelLiters });
+  totalRow(m, "Toplam", {
+    hours: r.totals.machineHours,
+    fuel: r.totals.fuelLiters,
+  });
 
   return new Uint8Array(await wb.xlsx.writeBuffer());
 }

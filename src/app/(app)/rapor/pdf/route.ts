@@ -1,6 +1,10 @@
 import { NextResponse } from "next/server";
 import { buildReportPdf } from "@/lib/report-pdf";
-import { fileResponse, reportFileName, reportForRequest } from "@/lib/report-file";
+import {
+  fileResponse,
+  reportFileName,
+  reportForRequest,
+} from "@/lib/report-file";
 
 export const runtime = "nodejs";
 

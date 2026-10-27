@@ -11,6 +11,7 @@ export function readFilters(
   let from = params.bas && ISO.test(params.bas) ? params.bas : month.from;
   let to = params.bit && ISO.test(params.bit) ? params.bit : month.to;
   if (from > to) [from, to] = [to, from];
-  const siteId = params.santiye && siteIds.includes(params.santiye) ? params.santiye : "";
+  const siteId =
+    params.santiye && siteIds.includes(params.santiye) ? params.santiye : "";
   return { siteId, from, to };
 }

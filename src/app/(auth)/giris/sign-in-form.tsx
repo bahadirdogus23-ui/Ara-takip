@@ -10,8 +10,22 @@ export function SignInForm({ next }: { next?: string }) {
     <form action={action} className="space-y-4" noValidate>
       <FormError state={state} />
       {next && <input type="hidden" name="sonra" value={next} />}
-      <Field name="email" label="E-posta" type="email" autoComplete="email" state={state} required />
-      <Field name="password" label="Şifre" type="password" autoComplete="current-password" state={state} required />
+      <Field
+        name="email"
+        label="E-posta"
+        type="email"
+        autoComplete="email"
+        state={state}
+        required
+      />
+      <Field
+        name="password"
+        label="Şifre"
+        type="password"
+        autoComplete="current-password"
+        state={state}
+        required
+      />
       <SubmitButton pendingText="Giriş yapılıyor…">Giriş yap</SubmitButton>
     </form>
   );

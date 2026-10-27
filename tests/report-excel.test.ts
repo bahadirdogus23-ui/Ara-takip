@@ -7,8 +7,16 @@ import { sampleReport } from "./report.fixture";
 describe("Excel çıktısı", () => {
   it("beş sayfa üretir, toplamlar formül + doğru sonuç içerir", async () => {
     const wb = new ExcelJS.Workbook();
-    await wb.xlsx.load((await buildReportWorkbook(sampleReport())).buffer as ArrayBuffer);
-    expect(wb.worksheets.map((w) => w.name)).toEqual(["Özet", "İmalat", "Giderler", "Seferler", "Makineler"]);
+    await wb.xlsx.load(
+      (await buildReportWorkbook(sampleReport())).buffer as ArrayBuffer,
+    );
+    expect(wb.worksheets.map((w) => w.name)).toEqual([
+      "Özet",
+      "İmalat",
+      "Giderler",
+      "Seferler",
+      "Makineler",
+    ]);
 
     const m = wb.getWorksheet("Makineler")!;
     expect(m.getCell("A2").value).toBe("EKS-01");
@@ -37,7 +45,9 @@ describe("Excel çıktısı", () => {
   });
 
   it("dosya adında Türkçe karakter ve boşluk bırakmaz", () => {
-    expect(slugTR("Çevre Yolu 1. Kısım / Ağrı")).toBe("Cevre-Yolu-1-Kisim-Agri");
+    expect(slugTR("Çevre Yolu 1. Kısım / Ağrı")).toBe(
+      "Cevre-Yolu-1-Kisim-Agri",
+    );
     expect(slugTR("***")).toBe("santiye");
   });
 });

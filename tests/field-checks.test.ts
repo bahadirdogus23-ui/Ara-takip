@@ -13,12 +13,20 @@ describe("mazot normu", () => {
 describe("güzergâh sefer sınırı", () => {
   it("girilen çevrim süresini kullanır", () => {
     // 11 saat = 660 dk ÷ 45 dk = 14 sefer
-    expect(routeLimit({ cycle_minutes: 45, distance_km: null })).toEqual({ cycleMinutes: 45, estimated: false, maxTrips: 14 });
+    expect(routeLimit({ cycle_minutes: 45, distance_km: null })).toEqual({
+      cycleMinutes: 45,
+      estimated: false,
+      maxTrips: 14,
+    });
   });
 
   it("çevrim yoksa mesafeden tahmin eder", () => {
     // 5 km: 10 km gidiş-dönüş ÷ 30 km/sa = 20 dk + 15 dk = 35 dk → 660 ÷ 35 = 18
-    expect(routeLimit({ cycle_minutes: null, distance_km: 5 })).toEqual({ cycleMinutes: 35, estimated: true, maxTrips: 18 });
+    expect(routeLimit({ cycle_minutes: null, distance_km: 5 })).toEqual({
+      cycleMinutes: 35,
+      estimated: true,
+      maxTrips: 18,
+    });
     expect(routeLimit({ cycle_minutes: null, distance_km: null })).toBeNull();
   });
 
@@ -34,7 +42,15 @@ describe("güzergâh sefer sınırı", () => {
       { vehicle_id: "v1", route_id: "r2", trip_count: 40 }, // bilinmeyen sınır
       { vehicle_id: "v3", route_id: null, trip_count: 99 }, // güzergâhsız
     ];
-    expect(suspiciousTrips(trips, routes)).toEqual([{ vehicleId: "v1", routeId: "r1", trips: 12, maxTrips: 11, estimated: false }]);
+    expect(suspiciousTrips(trips, routes)).toEqual([
+      {
+        vehicleId: "v1",
+        routeId: "r1",
+        trips: 12,
+        maxTrips: 11,
+        estimated: false,
+      },
+    ]);
   });
 });
 
@@ -51,12 +67,24 @@ describe("makine kaydı doğrulama", () => {
   };
 
   it("saat ve mazotu Türkçe sayı olarak alır", () => {
-    expect(machineLogSchema.parse({ ...base, hours: "9,5", fuel_liters: "180" })).toMatchObject({ hours: 9.5, fuel_liters: 180 });
+    expect(
+      machineLogSchema.parse({ ...base, hours: "9,5", fuel_liters: "180" }),
+    ).toMatchObject({ hours: 9.5, fuel_liters: 180 });
   });
 
   it("ikisi de boşsa veya saat 24'ü aşarsa uyarır", () => {
-    expect(toFieldErrors(machineLogSchema.safeParse({ ...base, hours: "", fuel_liters: "" }).error!).hours).toBe("Çalışma saati veya mazot girin");
-    expect(toFieldErrors(machineLogSchema.safeParse({ ...base, hours: "25", fuel_liters: "" }).error!).hours).toBe("Çalışma saati çok büyük");
+    expect(
+      toFieldErrors(
+        machineLogSchema.safeParse({ ...base, hours: "", fuel_liters: "" })
+          .error!,
+      ).hours,
+    ).toBe("Çalışma saati veya mazot girin");
+    expect(
+      toFieldErrors(
+        machineLogSchema.safeParse({ ...base, hours: "25", fuel_liters: "" })
+          .error!,
+      ).hours,
+    ).toBe("Çalışma saati çok büyük");
   });
 });
 
@@ -64,9 +92,17 @@ import { isMachineType } from "@/lib/field-checks";
 
 describe("araç türü", () => {
   it("iş makinelerini kamyonlardan ayırır", () => {
-    for (const t of ["Ekskavatör", "Paletli ekskavatör", "Kazıcı yükleyici (beko)", "Greyder", "Silindir", "Lastikli loder"]) {
+    for (const t of [
+      "Ekskavatör",
+      "Paletli ekskavatör",
+      "Kazıcı yükleyici (beko)",
+      "Greyder",
+      "Silindir",
+      "Lastikli loder",
+    ]) {
       expect(isMachineType(t)).toBe(true);
     }
-    for (const t of ["Kamyon", "Damperli kamyon", "Çekici", "Tanker"]) expect(isMachineType(t)).toBe(false);
+    for (const t of ["Kamyon", "Damperli kamyon", "Çekici", "Tanker"])
+      expect(isMachineType(t)).toBe(false);
   });
 });

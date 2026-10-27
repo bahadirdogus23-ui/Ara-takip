@@ -8,7 +8,8 @@ export const TENANT_COOKIE = "hafriyol_firma";
 
 export type TenantOption = { id: string; name: string; role: MemberRole };
 
-export const canManage = (role: MemberRole) => role === "owner" || role === "manager";
+export const canManage = (role: MemberRole) =>
+  role === "owner" || role === "manager";
 
 export const ROLE_LABELS: Record<MemberRole, string> = {
   owner: "Firma sahibi",
@@ -26,10 +27,14 @@ export const getContext = cache(async () => {
   } = await supabase.auth.getUser();
   if (!user) redirect("/giris");
 
-  const [{ data: memberships, error: mErr }, { data: tenants, error: tErr }] = await Promise.all([
-    supabase.from("memberships").select("tenant_id, role").eq("user_id", user.id),
-    supabase.from("tenants").select("id, name").order("name"),
-  ]);
+  const [{ data: memberships, error: mErr }, { data: tenants, error: tErr }] =
+    await Promise.all([
+      supabase
+        .from("memberships")
+        .select("tenant_id, role")
+        .eq("user_id", user.id),
+      supabase.from("tenants").select("id, name").order("name"),
+    ]);
   if (mErr || tErr) throw new Error("Firma bilgileri alınamadı");
 
   const options: TenantOption[] = (tenants ?? []).flatMap((t) => {

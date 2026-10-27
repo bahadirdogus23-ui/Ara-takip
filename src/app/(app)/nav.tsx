@@ -19,7 +19,13 @@ import {
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
-type NavItem = { href: string; label: string; icon: LucideIcon; managerOnly?: boolean; ownerOnly?: boolean };
+type NavItem = {
+  href: string;
+  label: string;
+  icon: LucideIcon;
+  managerOnly?: boolean;
+  ownerOnly?: boolean;
+};
 
 export const NAV_ITEMS: NavItem[] = [
   { href: "/panel", label: "Bugün", icon: Home },
@@ -30,18 +36,31 @@ export const NAV_ITEMS: NavItem[] = [
   { href: "/kayitlar", label: "Kayıtlar", icon: ClipboardList },
   { href: "/giderler", label: "Giderler", icon: Receipt, managerOnly: true },
   { href: "/rapor", label: "Rapor", icon: BarChart3, managerOnly: true },
-  { href: "/hakedis", label: "Taşeron hakedişi", icon: HandCoins, managerOnly: true },
+  {
+    href: "/hakedis",
+    label: "Taşeron hakedişi",
+    icon: HandCoins,
+    managerOnly: true,
+  },
   { href: "/santiyeler", label: "Şantiyeler", icon: Building2 },
   { href: "/araclar", label: "Araçlar", icon: HardHat },
-  { href: "/kullanicilar", label: "Kullanıcılar", icon: Users, ownerOnly: true },
+  {
+    href: "/kullanicilar",
+    label: "Kullanıcılar",
+    icon: Users,
+    ownerOnly: true,
+  },
 ];
 
 export type Access = { manager: boolean; owner: boolean };
 
 export const visibleItems = ({ manager, owner }: Access) =>
-  NAV_ITEMS.filter((l) => (manager || !l.managerOnly) && (owner || !l.ownerOnly));
+  NAV_ITEMS.filter(
+    (l) => (manager || !l.managerOnly) && (owner || !l.ownerOnly),
+  );
 
-const isActive = (path: string, href: string) => path === href || path.startsWith(`${href}/`);
+const isActive = (path: string, href: string) =>
+  path === href || path.startsWith(`${href}/`);
 
 // Bilgisayarda üstte yatay menü
 export function DesktopNav(access: Access) {
@@ -56,7 +75,9 @@ export function DesktopNav(access: Access) {
             href={href}
             aria-current={active ? "page" : undefined}
             className={`flex items-center gap-1.5 whitespace-nowrap border-b-2 px-3 py-2.5 text-sm font-medium ${
-              active ? "border-brand text-fg" : "border-transparent text-muted hover:text-fg"
+              active
+                ? "border-brand text-fg"
+                : "border-transparent text-muted hover:text-fg"
             }`}
           >
             <Icon className="size-4" aria-hidden />
@@ -69,7 +90,12 @@ export function DesktopNav(access: Access) {
 }
 
 // Telefonda altta, başparmakla ulaşılan sekme çubuğu; ortada büyük "kayıt gir" düğmesi
-const BOTTOM: { href: string; label: string; icon: LucideIcon; primary?: boolean }[] = [
+const BOTTOM: {
+  href: string;
+  label: string;
+  icon: LucideIcon;
+  primary?: boolean;
+}[] = [
   { href: "/panel", label: "Bugün", icon: Home },
   { href: "/sefer", label: "Sefer", icon: Truck },
   { href: "/gunluk", label: "Kayıt gir", icon: Plus, primary: true },
@@ -101,7 +127,11 @@ export function BottomNav() {
                     <Icon className="size-7" aria-hidden strokeWidth={2.5} />
                   </span>
                 ) : (
-                  <Icon className="size-6" aria-hidden strokeWidth={active ? 2.5 : 2} />
+                  <Icon
+                    className="size-6"
+                    aria-hidden
+                    strokeWidth={active ? 2.5 : 2}
+                  />
                 )}
                 <span>{label}</span>
               </Link>

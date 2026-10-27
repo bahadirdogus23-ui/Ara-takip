@@ -5,38 +5,55 @@ import { canManage, getContext } from "@/lib/context";
 import { readFilters } from "@/lib/filters";
 import { formatDateTR } from "@/lib/format";
 import { formatTrNumber } from "@/lib/number";
-import { groupTrips } from "@/lib/trip-groups";
+import { fetchAll, loadTripDays } from "@/lib/summaries";
+import { deleteLabels, tripGroups } from "@/lib/trip-groups";
 import { UNITS } from "@/lib/validation";
 import { deleteProduction, deleteTrip } from "../gunluk/actions";
 
 export const metadata = { title: "Kayıtlar" };
 
+// Liste en fazla bu kadar satır gösterir; toplamlar her zaman dönemin tamamından hesaplanır
 const LIMIT = 500;
-const unitLabel = (u: string | undefined) => (u ? (UNITS[u as keyof typeof UNITS] ?? u) : "");
+const unitLabel = (u: string | undefined) =>
+  u ? (UNITS[u as keyof typeof UNITS] ?? u) : "";
 
 export default async function EntriesPage({
   searchParams,
 }: {
-  searchParams: Promise<{ santiye?: string; bas?: string; bit?: string; tur?: string }>;
+  searchParams: Promise<{
+    santiye?: string;
+    bas?: string;
+    bit?: string;
+    tur?: string;
+  }>;
 }) {
   const params = await searchParams;
   const kind = params.tur === "sefer" ? "sefer" : "imalat";
   const { supabase, user, tenant } = await getContext();
 
-  const { data: sites } = await supabase.from("sites").select("id, name").eq("tenant_id", tenant.id).order("name");
+  const { data: sites } = await supabase
+    .from("sites")
+    .select("id, name")
+    .eq("tenant_id", tenant.id)
+    .order("name");
   const { siteId, from, to } = readFilters(
     params,
     (sites ?? []).map((s) => s.id),
   );
   const siteName = new Map(sites?.map((s) => [s.id, s.name]));
-  const canDelete = (createdBy: string) => canManage(tenant.role) || createdBy === user.id;
-  const tabHref = (tur: string) => `/kayitlar?${new URLSearchParams({ tur, santiye: siteId, bas: from, bit: to })}`;
+  const canDelete = (createdBy: string) =>
+    canManage(tenant.role) || createdBy === user.id;
+  const tabHref = (tur: string) =>
+    `/kayitlar?${new URLSearchParams({ tur, santiye: siteId, bas: from, bit: to })}`;
 
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-2xl font-bold">Kayıtlar</h1>
-        <Link href={siteId ? `/gunluk?santiye=${siteId}` : "/gunluk"} className="btn-primary">
+        <Link
+          href={siteId ? `/gunluk?santiye=${siteId}` : "/gunluk"}
+          className="btn-primary"
+        >
           Yeni kayıt
         </Link>
       </div>
@@ -54,12 +71,32 @@ export default async function EntriesPage({
         ))}
       </div>
 
-      <FilterBar sites={sites ?? []} siteId={siteId} from={from} to={to} hidden={{ tur: kind }} />
+      <FilterBar
+        sites={sites ?? []}
+        siteId={siteId}
+        from={from}
+        to={to}
+        hidden={{ tur: kind }}
+      />
 
       {kind === "imalat" ? (
-        <ProductionList siteId={siteId} from={from} to={to} siteName={siteName} canDelete={canDelete} />
+        <ProductionList
+          siteId={siteId}
+          from={from}
+          to={to}
+          siteName={siteName}
+          canDelete={canDelete}
+          manager={canManage(tenant.role)}
+        />
       ) : (
-        <TripList siteId={siteId} from={from} to={to} siteName={siteName} canDelete={canDelete} />
+        <TripList
+          siteId={siteId}
+          from={from}
+          to={to}
+          siteName={siteName}
+          canDelete={canDelete}
+          manager={canManage(tenant.role)}
+        />
       )}
     </div>
   );
@@ -71,32 +108,56 @@ type ListProps = {
   to: string;
   siteName: Map<string, string>;
   canDelete: (createdBy: string) => boolean;
+  manager: boolean;
 };
 
-async function ProductionList({ siteId, from, to, siteName, canDelete }: ListProps) {
+async function ProductionList({
+  siteId,
+  from,
+  to,
+  siteName,
+  canDelete,
+}: ListProps) {
   const { supabase, tenant } = await getContext();
-  let q = supabase
-    .from("production_entries")
-    .select("id, site_id, work_item_id, entry_date, quantity, note, created_by")
-    .eq("tenant_id", tenant.id)
-    .gte("entry_date", from)
-    .lte("entry_date", to)
-    .order("entry_date", { ascending: false })
-    .order("created_at", { ascending: false })
-    .limit(LIMIT);
-  if (siteId) q = q.eq("site_id", siteId);
+  const page = (a: number, b: number) => {
+    let q = supabase
+      .from("production_entries")
+      .select(
+        "id, site_id, work_item_id, entry_date, quantity, note, created_by",
+      )
+      .eq("tenant_id", tenant.id)
+      .gte("entry_date", from)
+      .lte("entry_date", to)
+      .order("entry_date", { ascending: false })
+      .order("created_at", { ascending: false })
+      .order("id")
+      .range(a, b);
+    if (siteId) q = q.eq("site_id", siteId);
+    return q;
+  };
 
-  const [{ data: rows }, { data: items }] = await Promise.all([
-    q,
-    supabase.from("work_items").select("id, code, name, unit").eq("tenant_id", tenant.id),
+  const [rows, { data: items }] = await Promise.all([
+    fetchAll(page),
+    supabase
+      .from("work_items")
+      .select("id, code, name, unit")
+      .eq("tenant_id", tenant.id),
   ]);
   const itemById = new Map(items?.map((i) => [i.id, i]));
 
   // İş kalemi başına toplam miktar (her kalemin kendi birimi var, kalemler arası toplanmaz)
   const totals = new Map<string, number>();
-  rows?.forEach((r) => totals.set(r.work_item_id, (totals.get(r.work_item_id) ?? 0) + Number(r.quantity)));
+  rows?.forEach((r) =>
+    totals.set(
+      r.work_item_id,
+      (totals.get(r.work_item_id) ?? 0) + Number(r.quantity),
+    ),
+  );
 
-  if (!rows?.length) return <p className="card text-sm text-muted">Bu aralıkta imalat kaydı yok.</p>;
+  if (!rows?.length)
+    return (
+      <p className="card text-sm text-muted">Bu aralıkta imalat kaydı yok.</p>
+    );
 
   return (
     <>
@@ -109,7 +170,12 @@ async function ProductionList({ siteId, from, to, siteName, canDelete }: ListPro
               <li key={itemId} className="flex justify-between gap-3">
                 <span className="min-w-0 truncate">
                   {!siteId && item && (
-                    <span className="text-muted">{siteName.get(rows.find((r) => r.work_item_id === itemId)!.site_id)} · </span>
+                    <span className="text-muted">
+                      {siteName.get(
+                        rows.find((r) => r.work_item_id === itemId)!.site_id,
+                      )}{" "}
+                      ·{" "}
+                    </span>
                   )}
                   {item?.name ?? "—"}
                 </span>
@@ -120,27 +186,41 @@ async function ProductionList({ siteId, from, to, siteName, canDelete }: ListPro
             );
           })}
         </ul>
-        {rows.length === LIMIT && (
-          <p className="mt-2 text-xs text-amber-700">İlk {LIMIT} kayıt gösteriliyor; aralığı daraltın.</p>
+        {rows.length > LIMIT && (
+          <p className="mt-2 text-xs text-amber-700">
+            Toplamlar {rows.length} kaydın tamamından; listede son {LIMIT} kayıt
+            gösteriliyor.
+          </p>
         )}
       </section>
 
       <ul className="divide-y divide-line overflow-hidden rounded-xl border border-line bg-surface">
-        {rows.map((r) => {
+        {rows.slice(0, LIMIT).map((r) => {
           const item = itemById.get(r.work_item_id);
           return (
-            <li key={r.id} className="flex items-start justify-between gap-3 px-4 py-2.5 text-sm">
+            <li
+              key={r.id}
+              className="flex items-start justify-between gap-3 px-4 py-2.5 text-sm"
+            >
               <div className="min-w-0">
                 <p>
-                  <span className="text-muted">{formatDateTR(r.entry_date)}</span>{" "}
+                  <span className="text-muted">
+                    {formatDateTR(r.entry_date)}
+                  </span>{" "}
                   <span className="font-semibold tabular-nums">
                     {formatTrNumber(r.quantity)} {unitLabel(item?.unit)}
                   </span>{" "}
                   {item?.name ?? "—"}
                 </p>
-                <p className="text-muted">{[!siteId && siteName.get(r.site_id), r.note].filter(Boolean).join(" · ")}</p>
+                <p className="text-muted">
+                  {[!siteId && siteName.get(r.site_id), r.note]
+                    .filter(Boolean)
+                    .join(" · ")}
+                </p>
               </div>
-              {canDelete(r.created_by) && <DeleteButton action={deleteProduction} id={r.id} />}
+              {canDelete(r.created_by) && (
+                <DeleteButton action={deleteProduction} id={r.id} />
+              )}
             </li>
           );
         })}
@@ -149,36 +229,32 @@ async function ProductionList({ siteId, from, to, siteName, canDelete }: ListPro
   );
 }
 
-async function TripList({ siteId, from, to, siteName, canDelete }: ListProps) {
+async function TripList({ siteId, from, to, siteName, manager }: ListProps) {
   const { supabase, tenant } = await getContext();
-  let q = supabase
-    .from("trip_entries")
-    .select("id, site_id, vehicle_id, route_id, entry_date, trip_count, tonnage, note, created_by")
-    .eq("tenant_id", tenant.id)
-    .gte("entry_date", from)
-    .lte("entry_date", to)
-    .order("entry_date", { ascending: false })
-    .order("created_at", { ascending: false })
-    .limit(LIMIT);
-  if (siteId) q = q.eq("site_id", siteId);
-
-  const [{ data: rows }, { data: vehicles }, { data: routes }] = await Promise.all([
-    q,
+  const [days, { data: vehicles }, { data: routes }] = await Promise.all([
+    loadTripDays(supabase, { tenantId: tenant.id, siteId, from, to }),
     supabase.from("vehicles").select("id, plate").eq("tenant_id", tenant.id),
     supabase.from("routes").select("id, name").eq("tenant_id", tenant.id),
   ]);
   const plate = new Map(vehicles?.map((v) => [v.id, v.plate]));
   const routeName = new Map(routes?.map((r) => [r.id, r.name]));
+  const groups = tripGroups(days, manager);
 
-  if (!rows?.length) return <p className="card text-sm text-muted">Bu aralıkta sefer kaydı yok.</p>;
+  if (!groups.length)
+    return (
+      <p className="card text-sm text-muted">Bu aralıkta sefer kaydı yok.</p>
+    );
 
-  // Araç başına toplam sefer ve tonaj
+  // Araç başına toplam sefer ve tonaj (dönemin tamamı)
   const byVehicle = new Map<string, { trips: number; ton: number }>();
-  rows.forEach((r) => {
-    const t = byVehicle.get(r.vehicle_id) ?? { trips: 0, ton: 0 };
-    byVehicle.set(r.vehicle_id, { trips: t.trips + r.trip_count, ton: t.ton + Number(r.tonnage ?? 0) });
+  groups.forEach((g) => {
+    const t = byVehicle.get(g.vehicleId) ?? { trips: 0, ton: 0 };
+    byVehicle.set(g.vehicleId, {
+      trips: t.trips + g.trips,
+      ton: t.ton + g.ton,
+    });
   });
-  const allTrips = rows.reduce((s, r) => s + r.trip_count, 0);
+  const allTrips = groups.reduce((s, g) => s + g.trips, 0);
 
   return (
     <>
@@ -194,23 +270,32 @@ async function TripList({ siteId, from, to, siteName, canDelete }: ListProps) {
             </li>
           ))}
         </ul>
-        {rows.length === LIMIT && (
-          <p className="mt-2 text-xs text-amber-700">İlk {LIMIT} kayıt gösteriliyor; aralığı daraltın.</p>
+        {groups.length > LIMIT && (
+          <p className="mt-2 text-xs text-amber-700">
+            Toplamlar dönemin tamamından; listede son {LIMIT} satır
+            gösteriliyor.
+          </p>
         )}
       </section>
 
       <ul className="divide-y divide-line overflow-hidden rounded-xl border border-line bg-surface">
-        {groupTrips(rows, canDelete).map((g) => (
-          <li key={g.key} className="flex items-start justify-between gap-3 px-4 py-2.5 text-sm">
+        {groups.slice(0, LIMIT).map((g) => (
+          <li
+            key={g.key}
+            className="flex items-start justify-between gap-3 px-4 py-2.5 text-sm"
+          >
             <div className="min-w-0">
               <p>
                 <span className="text-muted">{formatDateTR(g.date)}</span>{" "}
-                <span className="font-semibold tabular-nums">{g.trips} sefer</span> {plate.get(g.vehicleId) ?? "—"}
+                <span className="font-semibold tabular-nums">
+                  {g.trips} sefer
+                </span>{" "}
+                {plate.get(g.vehicleId) ?? "—"}
                 {g.ton > 0 && ` · ${formatTrNumber(g.ton)} t kantar`}
               </p>
               <p className="text-muted">
                 {[
-                  !siteId && siteName.get(rows.find((r) => r.vehicle_id === g.vehicleId && r.entry_date === g.date)!.site_id),
+                  !siteId && siteName.get(g.siteId),
                   g.routeId ? routeName.get(g.routeId) : "Güzergâhsız",
                   ...g.notes,
                 ]
@@ -222,8 +307,7 @@ async function TripList({ siteId, from, to, siteName, canDelete }: ListProps) {
               <DeleteButton
                 action={deleteTrip}
                 id={g.lastDeletableId}
-                label="Son seferi sil"
-                confirmText="Bu araçtaki son sefer silinsin mi?"
+                {...deleteLabels(g.lastCount)}
               />
             )}
           </li>

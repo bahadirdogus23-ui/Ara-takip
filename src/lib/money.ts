@@ -7,7 +7,8 @@ export const toKurus = (tl: number) => Math.round(tl * 100);
 export const toTL = (kurus: number) => kurus / 100;
 
 // Satırın KDV'si (kuruş)
-export const vatKurus = (amountTl: number, ratePercent: number) => Math.round((toKurus(amountTl) * ratePercent) / 100);
+export const vatKurus = (amountTl: number, ratePercent: number) =>
+  Math.round((toKurus(amountTl) * ratePercent) / 100);
 
 export function expenseTotals(rows: { amount: number; vat_rate: number }[]) {
   let net = 0;

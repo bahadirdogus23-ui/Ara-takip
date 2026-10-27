@@ -5,7 +5,8 @@ import { canManage, getContext } from "@/lib/context";
 import { formatDateTR, isoDateTR } from "@/lib/format";
 import { pickSite } from "@/lib/site-pref";
 import { formatTrNumber } from "@/lib/number";
-import { groupTrips } from "@/lib/trip-groups";
+import { loadTripDays } from "@/lib/summaries";
+import { deleteLabels, tripGroups } from "@/lib/trip-groups";
 import { UNITS } from "@/lib/validation";
 import { deleteProduction, deleteTrip } from "./actions";
 import { ProductionForm, TripForm } from "./entry-forms";
@@ -13,9 +14,14 @@ import { SiteDatePicker } from "./site-date-picker";
 
 export const metadata = { title: "Günlük giriş" };
 
-const unitLabel = (u: string | undefined) => (u ? (UNITS[u as keyof typeof UNITS] ?? u) : "");
+const unitLabel = (u: string | undefined) =>
+  u ? (UNITS[u as keyof typeof UNITS] ?? u) : "";
 
-export default async function DailyEntryPage({ searchParams }: { searchParams: Promise<{ santiye?: string; tarih?: string }> }) {
+export default async function DailyEntryPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ santiye?: string; tarih?: string }>;
+}) {
   const { santiye, tarih } = await searchParams;
   const { supabase, user, tenant } = await getContext();
 
@@ -30,7 +36,9 @@ export default async function DailyEntryPage({ searchParams }: { searchParams: P
     return (
       <div className="card mx-auto max-w-lg">
         <h1 className="text-xl font-bold">Günlük giriş</h1>
-        <p className="mt-2 text-sm text-muted">Kayıt girebilmek için devam eden bir şantiye olmalı.</p>
+        <p className="mt-2 text-sm text-muted">
+          Kayıt girebilmek için devam eden bir şantiye olmalı.
+        </p>
         {canManage(tenant.role) && (
           <Link href="/kurulum" className="btn-primary mt-4">
             Hızlı kurulum
@@ -44,27 +52,41 @@ export default async function DailyEntryPage({ searchParams }: { searchParams: P
   const today = isoDateTR();
   const date = tarih && /^\d{4}-\d{2}-\d{2}$/.test(tarih) ? tarih : today;
 
-  const [{ data: items }, { data: vehicles }, { data: routes }, { data: production }, { data: trips }] = await Promise.all([
+  const [
+    { data: items },
+    { data: vehicles },
+    { data: routes },
+    { data: production },
+    tripDays,
+  ] = await Promise.all([
     supabase
       .from("work_items")
       .select("id, code, name, unit")
       .eq("site_id", site.id)
       .order("code", { nullsFirst: false })
       .order("name"),
-    supabase.from("vehicles").select("id, plate, vehicle_type, active").eq("tenant_id", tenant.id).order("plate"),
-    supabase.from("routes").select("id, name").eq("site_id", site.id).order("name"),
+    supabase
+      .from("vehicles")
+      .select("id, plate, vehicle_type, active")
+      .eq("tenant_id", tenant.id)
+      .order("plate"),
+    supabase
+      .from("routes")
+      .select("id, name")
+      .eq("site_id", site.id)
+      .order("name"),
     supabase
       .from("production_entries")
       .select("id, work_item_id, quantity, note, created_by")
       .eq("site_id", site.id)
       .eq("entry_date", date)
       .order("created_at", { ascending: false }),
-    supabase
-      .from("trip_entries")
-      .select("id, vehicle_id, route_id, trip_count, tonnage, note, created_by")
-      .eq("site_id", site.id)
-      .eq("entry_date", date)
-      .order("created_at", { ascending: false }),
+    loadTripDays(supabase, {
+      tenantId: tenant.id,
+      siteId: site.id,
+      from: date,
+      to: date,
+    }),
   ]);
 
   const itemById = new Map(items?.map((i) => [i.id, i]));
@@ -74,18 +96,17 @@ export default async function DailyEntryPage({ searchParams }: { searchParams: P
   const canDelete = (createdBy: string) => manager || createdBy === user.id;
   // Pasif araçlar formda çıkmaz ama eski kayıtlarda plakası görünür
   const activeVehicles = vehicles?.filter((v) => v.active) ?? [];
-  const totalTrips = trips?.reduce((s, t) => s + t.trip_count, 0) ?? 0;
-  const tripGroups = groupTrips(
-    (trips ?? []).map((t) => ({ ...t, entry_date: date })),
-    canDelete,
-  );
+  const groups = tripGroups(tripDays, manager);
+  const totalTrips = groups.reduce((s, g) => s + g.trips, 0);
 
   return (
     <div className="mx-auto max-w-xl space-y-5">
       <h1 className="text-2xl font-bold">Günlük giriş</h1>
       <SiteDatePicker sites={sites} siteId={site.id} date={date} />
       {date > today && (
-        <p className="rounded-md bg-amber-50 p-3 text-sm text-amber-900">Dikkat: ileri bir tarihe kayıt giriyorsunuz.</p>
+        <p className="rounded-md bg-amber-50 p-3 text-sm text-amber-900">
+          Dikkat: ileri bir tarihe kayıt giriyorsunuz.
+        </p>
       )}
 
       <section className="card space-y-3">
@@ -95,7 +116,10 @@ export default async function DailyEntryPage({ searchParams }: { searchParams: P
             siteId={site.id}
             date={date}
             requestId={randomUUID()}
-            items={items.map((i) => ({ value: i.id, label: `${i.code ? `${i.code} · ` : ""}${i.name} (${unitLabel(i.unit)})` }))}
+            items={items.map((i) => ({
+              value: i.id,
+              label: `${i.code ? `${i.code} · ` : ""}${i.name} (${unitLabel(i.unit)})`,
+            }))}
           />
         ) : (
           <p className="text-sm text-muted">
@@ -116,7 +140,10 @@ export default async function DailyEntryPage({ searchParams }: { searchParams: P
             siteId={site.id}
             date={date}
             requestId={randomUUID()}
-            vehicles={activeVehicles.map((v) => ({ value: v.id, label: `${v.plate} · ${v.vehicle_type}` }))}
+            vehicles={activeVehicles.map((v) => ({
+              value: v.id,
+              label: `${v.plate} · ${v.vehicle_type}`,
+            }))}
             routes={(routes ?? []).map((r) => ({ value: r.id, label: r.name }))}
           />
         ) : (
@@ -135,13 +162,18 @@ export default async function DailyEntryPage({ searchParams }: { searchParams: P
         <h2 className="text-lg font-bold">{formatDateTR(date)} kayıtları</h2>
 
         <div className="overflow-hidden rounded-xl border border-line bg-surface">
-          <p className="border-b border-line bg-bg px-4 py-2 text-sm font-semibold">İmalat ({production?.length ?? 0})</p>
+          <p className="border-b border-line bg-bg px-4 py-2 text-sm font-semibold">
+            İmalat ({production?.length ?? 0})
+          </p>
           {production?.length ? (
             <ul className="divide-y divide-line">
               {production.map((p) => {
                 const item = itemById.get(p.work_item_id);
                 return (
-                  <li key={p.id} className="flex items-start justify-between gap-3 px-4 py-2.5">
+                  <li
+                    key={p.id}
+                    className="flex items-start justify-between gap-3 px-4 py-2.5"
+                  >
                     <div className="min-w-0 text-sm">
                       <p>
                         <span className="font-semibold tabular-nums">
@@ -151,7 +183,9 @@ export default async function DailyEntryPage({ searchParams }: { searchParams: P
                       </p>
                       {p.note && <p className="text-muted">{p.note}</p>}
                     </div>
-                    {canDelete(p.created_by) && <DeleteButton action={deleteProduction} id={p.id} />}
+                    {canDelete(p.created_by) && (
+                      <DeleteButton action={deleteProduction} id={p.id} />
+                    )}
                   </li>
                 );
               })}
@@ -162,27 +196,40 @@ export default async function DailyEntryPage({ searchParams }: { searchParams: P
         </div>
 
         <div className="overflow-hidden rounded-xl border border-line bg-surface">
-          <p className="border-b border-line bg-bg px-4 py-2 text-sm font-semibold">Sefer ({totalTrips} sefer)</p>
-          {tripGroups.length ? (
+          <p className="border-b border-line bg-bg px-4 py-2 text-sm font-semibold">
+            Sefer ({totalTrips} sefer)
+          </p>
+          {groups.length ? (
             <ul className="divide-y divide-line">
-              {tripGroups.map((g) => (
-                <li key={g.key} className="flex items-start justify-between gap-3 px-4 py-2.5">
+              {groups.map((g) => (
+                <li
+                  key={g.key}
+                  className="flex items-start justify-between gap-3 px-4 py-2.5"
+                >
                   <div className="min-w-0 text-sm">
                     <p>
-                      <span className="font-semibold tabular-nums">{g.trips} sefer</span>{" "}
+                      <span className="font-semibold tabular-nums">
+                        {g.trips} sefer
+                      </span>{" "}
                       {vehicleById.get(g.vehicleId)?.plate ?? "—"}
                       {g.ton > 0 && ` · ${formatTrNumber(g.ton)} t kantar`}
                     </p>
                     <p className="text-muted">
-                      {[g.routeId ? routeById.get(g.routeId)?.name : "Güzergâhsız", ...g.notes].filter(Boolean).join(" · ")}
+                      {[
+                        g.routeId
+                          ? routeById.get(g.routeId)?.name
+                          : "Güzergâhsız",
+                        ...g.notes,
+                      ]
+                        .filter(Boolean)
+                        .join(" · ")}
                     </p>
                   </div>
                   {g.lastDeletableId && (
                     <DeleteButton
                       action={deleteTrip}
                       id={g.lastDeletableId}
-                      label="Son seferi sil"
-                      confirmText="Bu araçtaki son sefer silinsin mi?"
+                      {...deleteLabels(g.lastCount)}
                     />
                   )}
                 </li>

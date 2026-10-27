@@ -3,7 +3,12 @@ import { summarizeReport } from "@/lib/report";
 // Veritabanı testi T9 ile aynı örnek: Ekim 2026, A Hafriyat, Çevre Yolu 1. Kısım
 export const sampleReport = () =>
   summarizeReport({
-    site: { id: "s1", name: "Çevre Yolu 1. Kısım", code: "ÇY-1", employer: "Karayolları" },
+    site: {
+      id: "s1",
+      name: "Çevre Yolu 1. Kısım",
+      code: "ÇY-1",
+      employer: "Karayolları",
+    },
     tenantName: "A Hafriyat Ltd. Şti.",
     from: "2026-10-01",
     to: "2026-10-31",
@@ -36,8 +41,20 @@ export const sampleReport = () =>
       },
     ],
     expenses: [
-      { category: "fuel", amount: 3000, vat_amount: 600, total: 3600, entry_count: 1 },
-      { category: "labor", amount: 1234.56, vat_amount: 246.91, total: 1481.47, entry_count: 1 },
+      {
+        category: "fuel",
+        amount: 3000,
+        vat_amount: 600,
+        total: 3600,
+        entry_count: 1,
+      },
+      {
+        category: "labor",
+        amount: 1234.56,
+        vat_amount: 246.91,
+        total: 1481.47,
+        entry_count: 1,
+      },
     ],
     trips: [
       { vehicle_id: "v1", trip_count: 12, tonnage: 290 },
@@ -47,7 +64,12 @@ export const sampleReport = () =>
     vehicles: [
       { id: "v1", plate: "06 ABC 123", vehicle_type: "Kamyon" },
       { id: "v2", plate: "44 ŞĞ 07", vehicle_type: "Damperli kamyon" },
-      { id: "v3", plate: "EKS-01", vehicle_type: "Ekskavatör", fuel_norm_lph: 15 },
+      {
+        id: "v3",
+        plate: "EKS-01",
+        vehicle_type: "Ekskavatör",
+        fuel_norm_lph: 15,
+      },
     ],
     machineLogs: [
       { vehicle_id: "v3", hours: 9.5, fuel_liters: 180 },

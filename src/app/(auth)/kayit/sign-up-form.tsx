@@ -9,7 +9,14 @@ export function SignUpForm() {
   return (
     <form action={action} className="space-y-4" noValidate>
       <FormError state={state} />
-      <Field name="email" label="E-posta" type="email" autoComplete="email" state={state} required />
+      <Field
+        name="email"
+        label="E-posta"
+        type="email"
+        autoComplete="email"
+        state={state}
+        required
+      />
       <Field
         name="password"
         label="Şifre"

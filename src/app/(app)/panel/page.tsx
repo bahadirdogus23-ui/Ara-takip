@@ -22,6 +22,7 @@ import { toKurus, toTL } from "@/lib/money";
 import { formatTrNumber } from "@/lib/number";
 import { loadPhotos } from "@/lib/photo-load";
 import { pickSite } from "@/lib/site-pref";
+import { loadMachineDays, loadTripDays } from "@/lib/summaries";
 import { UNITS } from "@/lib/validation";
 
 export const metadata = { title: "Bugün" };
@@ -32,17 +33,28 @@ const sumAmount = (rows: { amount: number }[] | null) =>
 
 function greeting(): string {
   const h = Number(
-    new Intl.DateTimeFormat("en-GB", { hour: "numeric", hour12: false, timeZone: "Europe/Istanbul" }).format(new Date()),
+    new Intl.DateTimeFormat("en-GB", {
+      hour: "numeric",
+      hour12: false,
+      timeZone: "Europe/Istanbul",
+    }).format(new Date()),
   );
   return h < 11 ? "Günaydın" : h < 18 ? "İyi günler" : "İyi akşamlar";
 }
 
 const longDate = () =>
-  new Intl.DateTimeFormat("tr-TR", { weekday: "long", day: "numeric", month: "long", timeZone: "Europe/Istanbul" }).format(
-    new Date(),
-  );
+  new Intl.DateTimeFormat("tr-TR", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    timeZone: "Europe/Istanbul",
+  }).format(new Date());
 
-export default async function TodayPage({ searchParams }: { searchParams: Promise<{ santiye?: string; hazir?: string }> }) {
+export default async function TodayPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ santiye?: string; hazir?: string }>;
+}) {
   const { santiye, hazir } = await searchParams;
   const { supabase, user, tenant } = await getContext();
   const manager = canManage(tenant.role);
@@ -63,14 +75,17 @@ export default async function TodayPage({ searchParams }: { searchParams: Promis
           <Rocket className="mx-auto size-10 text-brand" aria-hidden />
           <h2 className="mt-2 text-lg font-bold">Bir dakikada başlayın</h2>
           <p className="mt-1 text-sm text-muted">
-            Şantiyenizi, yapacağınız işleri ve kamyonlarınızı tek ekrandan ekleyin; hemen sefer saymaya başlayın.
+            Şantiyenizi, yapacağınız işleri ve kamyonlarınızı tek ekrandan
+            ekleyin; hemen sefer saymaya başlayın.
           </p>
           {manager ? (
             <Link href="/kurulum" className="btn-primary mt-4">
               Hızlı kurulum
             </Link>
           ) : (
-            <p className="mt-3 text-sm text-muted">Firma yöneticinizin şantiye eklemesi gerekiyor.</p>
+            <p className="mt-3 text-sm text-muted">
+              Firma yöneticinizin şantiye eklemesi gerekiyor.
+            </p>
           )}
         </div>
       </div>
@@ -82,63 +97,104 @@ export default async function TodayPage({ searchParams }: { searchParams: Promis
   const [
     { data: todayItems },
     { data: monthItems },
-    { data: trips },
+    tripDays,
     { data: vehicles },
     { data: routes },
-    { data: machineLogs },
+    machineLogs,
   ] = await Promise.all([
-    supabase.rpc("production_summary", { p_site: site.id, p_from: today, p_to: today }),
-    supabase.rpc("production_summary", { p_site: site.id, p_from: month.from, p_to: month.to }),
+    supabase.rpc("production_summary", {
+      p_site: site.id,
+      p_from: today,
+      p_to: today,
+    }),
+    supabase.rpc("production_summary", {
+      p_site: site.id,
+      p_from: month.from,
+      p_to: month.to,
+    }),
+    loadTripDays(supabase, {
+      tenantId: tenant.id,
+      siteId: site.id,
+      from: today,
+      to: today,
+    }),
     supabase
-      .from("trip_entries")
-      .select("vehicle_id, route_id, trip_count, tonnage")
-      .eq("site_id", site.id)
-      .eq("entry_date", today),
-    supabase.from("vehicles").select("id, plate, capacity_ton, fuel_norm_lph").eq("tenant_id", tenant.id),
-    supabase.from("routes").select("id, name, cycle_minutes, distance_km").eq("site_id", site.id),
-    supabase.from("machine_logs").select("vehicle_id, hours, fuel_liters").eq("site_id", site.id).eq("log_date", today),
+      .from("vehicles")
+      .select("id, plate, capacity_ton, fuel_norm_lph")
+      .eq("tenant_id", tenant.id),
+    supabase
+      .from("routes")
+      .select("id, name, cycle_minutes, distance_km")
+      .eq("site_id", site.id),
+    loadMachineDays(supabase, {
+      tenantId: tenant.id,
+      siteId: site.id,
+      from: today,
+      to: today,
+    }),
   ]);
 
   const vehicleById = new Map(vehicles?.map((v) => [v.id, v]));
   const byVehicle = new Map<string, number>();
   const tonsByVehicle = new Map<string, number>();
-  for (const t of trips ?? []) {
-    byVehicle.set(t.vehicle_id, (byVehicle.get(t.vehicle_id) ?? 0) + t.trip_count);
-    // Gerçek tonaj girilmişse o, yoksa araç kapasitesine göre tahmin
+  const trips = tripDays.map((d) => ({
+    vehicle_id: d.vehicle_id,
+    route_id: d.route_id,
+    trip_count: d.trips,
+  }));
+  for (const t of tripDays) {
+    byVehicle.set(t.vehicle_id, (byVehicle.get(t.vehicle_id) ?? 0) + t.trips);
+    // Girilen kantar tonu + tonu girilmemiş seferler için araç kapasitesine göre tahmin
     const cap = vehicleById.get(t.vehicle_id)?.capacity_ton;
-    const tn = t.tonnage !== null ? Number(t.tonnage) : cap ? Number(cap) * t.trip_count : 0;
-    tonsByVehicle.set(t.vehicle_id, (tonsByVehicle.get(t.vehicle_id) ?? 0) + tn);
+    const tn = t.tonnage + (cap ? Number(cap) * t.untonned_trips : 0);
+    tonsByVehicle.set(
+      t.vehicle_id,
+      (tonsByVehicle.get(t.vehicle_id) ?? 0) + tn,
+    );
   }
   const tons = [...tonsByVehicle.values()].reduce((s, n) => s + n, 0);
 
   const tripTotal = [...byVehicle.values()].reduce((s, n) => s + n, 0);
-  const producedToday = (todayItems ?? []).filter((i) => Number(i.quantity) > 0);
+  const producedToday = (todayItems ?? []).filter(
+    (i) => Number(i.quantity) > 0,
+  );
 
   // Dikkat isteyenler: fiziksel sınırı aşan sefer beyanı, normun üzerinde yakan makine
   const routeName = new Map(routes?.map((r) => [r.id, r.name]));
   const alerts = [
-    ...suspiciousTrips(trips ?? [], routes ?? []).map(
+    ...suspiciousTrips(trips, routes ?? []).map(
       (f) =>
         `${vehicleById.get(f.vehicleId)?.plate}: ${routeName.get(f.routeId)} güzergâhında ${f.trips} sefer (en fazla ${f.maxTrips} yapılabilir)`,
     ),
-    ...(machineLogs ?? []).flatMap((l) => {
+    ...machineLogs.flatMap((l) => {
       const v = vehicleById.get(l.vehicle_id);
+      // Aynı kayıtta saat ve mazot birlikte girilmişse L/saat hesaplanır
       const fc = fuelCheck(
-        l.hours === null ? null : Number(l.hours),
-        l.fuel_liters === null ? null : Number(l.fuel_liters),
+        l.paired_hours || null,
+        l.paired_fuel || null,
         v?.fuel_norm_lph ? Number(v.fuel_norm_lph) : null,
       );
       return fc.over
-        ? [`${v?.plate}: ${formatTrNumber(fc.lph!, 1)} L/saat yaktı (norm ${formatTrNumber(Number(v!.fuel_norm_lph), 1)})`]
+        ? [
+            `${v?.plate}: ${formatTrNumber(fc.lph!, 1)} L/saat yaktı (norm ${formatTrNumber(Number(v!.fuel_norm_lph), 1)})`,
+          ]
         : [];
     }),
   ];
   const machineByVehicle = new Map<string, { hours: number; fuel: number }>();
-  for (const l of machineLogs ?? []) {
+  for (const l of machineLogs) {
     const m = machineByVehicle.get(l.vehicle_id) ?? { hours: 0, fuel: 0 };
-    machineByVehicle.set(l.vehicle_id, { hours: m.hours + Number(l.hours ?? 0), fuel: m.fuel + Number(l.fuel_liters ?? 0) });
+    machineByVehicle.set(l.vehicle_id, {
+      hours: m.hours + Number(l.hours ?? 0),
+      fuel: m.fuel + Number(l.fuel_liters ?? 0),
+    });
   }
-  const photos = await loadPhotos(supabase, { siteId: site.id, from: today, to: today }, (by) => manager || by === user.id, 12);
+  const photos = await loadPhotos(
+    supabase,
+    { siteId: site.id, from: today, to: today },
+    (by) => manager || by === user.id,
+    12,
+  );
 
   const summary = buildDailySummary({
     tenantName: tenant.name,
@@ -146,12 +202,22 @@ export default async function TodayPage({ searchParams }: { searchParams: Promis
     date: today,
     trips: [...byVehicle]
       .sort((a, b) => b[1] - a[1])
-      .map(([id, n]) => ({ plate: vehicleById.get(id)?.plate ?? "—", trips: n, tons: tonsByVehicle.get(id) ?? 0 })),
-    production: producedToday.map((i) => ({ name: i.name, quantity: Number(i.quantity), unit: unitLabel(i.unit) })),
-    machines: [...machineByVehicle].map(([id, m]) => ({ plate: vehicleById.get(id)?.plate ?? "—", ...m })),
+      .map(([id, n]) => ({
+        plate: vehicleById.get(id)?.plate ?? "—",
+        trips: n,
+        tons: tonsByVehicle.get(id) ?? 0,
+      })),
+    production: producedToday.map((i) => ({
+      name: i.name,
+      quantity: Number(i.quantity),
+      unit: unitLabel(i.unit),
+    })),
+    machines: [...machineByVehicle].map(([id, m]) => ({
+      plate: vehicleById.get(id)?.plate ?? "—",
+      ...m,
+    })),
     alerts,
   });
-
 
   return (
     <div className="mx-auto max-w-3xl space-y-5">
@@ -171,7 +237,8 @@ export default async function TodayPage({ searchParams }: { searchParams: Promis
       {alerts.length > 0 && (
         <section className="rounded-xl border border-red-300 bg-red-50 p-4 dark:border-red-800 dark:bg-red-950/40">
           <h2 className="flex items-center gap-2 font-bold text-red-800 dark:text-red-300">
-            <AlertTriangle className="size-5" aria-hidden /> Dikkat ({alerts.length})
+            <AlertTriangle className="size-5" aria-hidden /> Dikkat (
+            {alerts.length})
           </h2>
           <ul className="mt-2 list-disc space-y-1 pl-6 text-sm text-red-900 dark:text-red-200">
             {alerts.map((a) => (
@@ -183,17 +250,54 @@ export default async function TodayPage({ searchParams }: { searchParams: Promis
 
       <div className="grid grid-cols-2 gap-3">
         <Stat label="Bugün sefer" value={String(tripTotal)} />
-        <Stat label="Bugün taşınan" value={tons ? `${formatTrNumber(tons, 0)} t` : "—"} hint="Kapasiteye göre tahmini" />
-        {manager && <Stat label="Bugün imalat" value={formatTL(sumAmount(todayItems))} hint="KDV hariç" />}
-        {manager && <Stat label="Bu ay imalat" value={formatTL(sumAmount(monthItems))} hint="KDV hariç" />}
+        <Stat
+          label="Bugün taşınan"
+          value={tons ? `${formatTrNumber(tons, 0)} t` : "—"}
+          hint="Kapasiteye göre tahmini"
+        />
+        {manager && (
+          <Stat
+            label="Bugün imalat"
+            value={formatTL(sumAmount(todayItems))}
+            hint="KDV hariç"
+          />
+        )}
+        {manager && (
+          <Stat
+            label="Bu ay imalat"
+            value={formatTL(sumAmount(monthItems))}
+            hint="KDV hariç"
+          />
+        )}
       </div>
 
       <div className="grid grid-cols-3 gap-3 sm:grid-cols-5">
-        <Action href={`/sefer?santiye=${site.id}`} icon={Truck} label="Sefer say" primary />
-        <Action href={`/gunluk?santiye=${site.id}`} icon={ClipboardPlus} label="İmalat gir" />
-        <Action href={`/makine?santiye=${site.id}`} icon={Fuel} label="Makine / mazot" />
-        {manager && <Action href="/giderler" icon={Receipt} label="Gider ekle" />}
-        {manager && <Action href={`/rapor?santiye=${site.id}`} icon={BarChart3} label="Rapor al" />}
+        <Action
+          href={`/sefer?santiye=${site.id}`}
+          icon={Truck}
+          label="Sefer say"
+          primary
+        />
+        <Action
+          href={`/gunluk?santiye=${site.id}`}
+          icon={ClipboardPlus}
+          label="İmalat gir"
+        />
+        <Action
+          href={`/makine?santiye=${site.id}`}
+          icon={Fuel}
+          label="Makine / mazot"
+        />
+        {manager && (
+          <Action href="/giderler" icon={Receipt} label="Gider ekle" />
+        )}
+        {manager && (
+          <Action
+            href={`/rapor?santiye=${site.id}`}
+            icon={BarChart3}
+            label="Rapor al"
+          />
+        )}
       </div>
 
       <section className="space-y-2">
@@ -205,8 +309,13 @@ export default async function TodayPage({ searchParams }: { searchParams: Promis
             {[...byVehicle]
               .sort((a, b) => b[1] - a[1])
               .map(([id, n]) => (
-                <li key={id} className="flex items-center justify-between px-4 py-2.5">
-                  <span className="font-medium tabular-nums">{vehicleById.get(id)?.plate ?? "—"}</span>
+                <li
+                  key={id}
+                  className="flex items-center justify-between px-4 py-2.5"
+                >
+                  <span className="font-medium tabular-nums">
+                    {vehicleById.get(id)?.plate ?? "—"}
+                  </span>
                   <span className="font-bold tabular-nums">{n} sefer</span>
                 </li>
               ))}
@@ -221,7 +330,10 @@ export default async function TodayPage({ searchParams }: { searchParams: Promis
         ) : (
           <ul className="divide-y divide-line overflow-hidden rounded-xl border border-line bg-surface">
             {producedToday.map((i) => (
-              <li key={i.work_item_id} className="flex items-center justify-between gap-3 px-4 py-2.5">
+              <li
+                key={i.work_item_id}
+                className="flex items-center justify-between gap-3 px-4 py-2.5"
+              >
                 <span className="min-w-0 truncate">{i.name}</span>
                 <span className="shrink-0 font-bold tabular-nums">
                   {formatTrNumber(Number(i.quantity))} {unitLabel(i.unit)}
@@ -242,7 +354,9 @@ export default async function TodayPage({ searchParams }: { searchParams: Promis
 
       <section className="card space-y-3">
         <h2 className="font-bold">Gün sonu raporu</h2>
-        <p className="text-sm text-muted">Şantiye grubunuza tek dokunuşla gönderin. Para tutarı içermez.</p>
+        <p className="text-sm text-muted">
+          Şantiye grubunuza tek dokunuşla gönderin. Para tutarı içermez.
+        </p>
         <ShareSummary text={summary} />
       </section>
     </div>
@@ -258,7 +372,15 @@ function Heading() {
   );
 }
 
-function Stat({ label, value, hint }: { label: string; value: string; hint?: string }) {
+function Stat({
+  label,
+  value,
+  hint,
+}: {
+  label: string;
+  value: string;
+  hint?: string;
+}) {
   return (
     <div className="card py-3">
       <p className="text-xs text-muted">{label}</p>
@@ -268,12 +390,24 @@ function Stat({ label, value, hint }: { label: string; value: string; hint?: str
   );
 }
 
-function Action({ href, icon: Icon, label, primary }: { href: string; icon: LucideIcon; label: string; primary?: boolean }) {
+function Action({
+  href,
+  icon: Icon,
+  label,
+  primary,
+}: {
+  href: string;
+  icon: LucideIcon;
+  label: string;
+  primary?: boolean;
+}) {
   return (
     <Link
       href={href}
       className={`flex min-h-20 flex-col items-center justify-center gap-1.5 rounded-xl border text-sm font-semibold ${
-        primary ? "border-brand bg-brand text-white dark:text-black" : "border-line bg-surface hover:border-brand"
+        primary
+          ? "border-brand bg-brand text-white dark:text-black"
+          : "border-line bg-surface hover:border-brand"
       }`}
     >
       <Icon className="size-7" aria-hidden />

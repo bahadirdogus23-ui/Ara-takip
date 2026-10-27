@@ -28,7 +28,15 @@ describe("gün sonu WhatsApp özeti", () => {
   });
 
   it("boş günü açıkça belirtir, WhatsApp bağlantısını kodlar", () => {
-    const empty = buildDailySummary({ tenantName: "A", siteName: "S", date: "2026-10-25", trips: [], production: [], machines: [], alerts: [] });
+    const empty = buildDailySummary({
+      tenantName: "A",
+      siteName: "S",
+      date: "2026-10-25",
+      trips: [],
+      production: [],
+      machines: [],
+      alerts: [],
+    });
     expect(empty).toContain("• Sefer girilmedi");
     expect(empty).not.toContain("Makine");
     expect(whatsappUrl("a b\nç")).toBe("https://wa.me/?text=a%20b%0A%C3%A7");

@@ -3,6 +3,7 @@ import type { Database } from "@/lib/database.types";
 import { loadContractorPayments } from "@/lib/contractor";
 import { fuelCheck } from "@/lib/field-checks";
 import { toKurus, toTL } from "@/lib/money";
+import { loadMachineDays, loadTripDays } from "@/lib/summaries";
 import { EXPENSE_CATEGORIES, UNITS } from "@/lib/validation";
 
 // Dönem raporu: bir şantiyenin seçilen tarih aralığındaki imalatı, giderleri ve seferleri.
@@ -24,9 +25,21 @@ export type ReportItem = {
   unitCost: number | null;
 };
 
-export type ReportExpense = { category: string; label: string; amount: number; vat: number; total: number; count: number };
+export type ReportExpense = {
+  category: string;
+  label: string;
+  amount: number;
+  vat: number;
+  total: number;
+  count: number;
+};
 
-export type ReportTrip = { plate: string; vehicleType: string; trips: number; tonnage: number };
+export type ReportTrip = {
+  plate: string;
+  vehicleType: string;
+  trips: number;
+  tonnage: number;
+};
 
 export type ReportMachine = {
   plate: string;
@@ -39,7 +52,12 @@ export type ReportMachine = {
 };
 
 export type Report = {
-  site: { id: string; name: string; code: string | null; employer: string | null };
+  site: {
+    id: string;
+    name: string;
+    code: string | null;
+    employer: string | null;
+  };
   tenantName: string;
   from: string;
   to: string;
@@ -61,15 +79,33 @@ export type Report = {
   };
 };
 
-type ProductionRow = Database["public"]["Functions"]["production_summary"]["Returns"][number];
-type ExpenseRow = Database["public"]["Functions"]["expense_summary"]["Returns"][number];
-type TripRow = { vehicle_id: string; trip_count: number; tonnage: number | null };
-type VehicleRow = { id: string; plate: string; vehicle_type: string; fuel_norm_lph?: number | null };
-type MachineLogRow = { vehicle_id: string; hours: number | null; fuel_liters: number | null };
+type ProductionRow =
+  Database["public"]["Functions"]["production_summary"]["Returns"][number];
+type ExpenseRow =
+  Database["public"]["Functions"]["expense_summary"]["Returns"][number];
+type TripRow = {
+  vehicle_id: string;
+  trip_count: number;
+  tonnage: number | null;
+};
+type VehicleRow = {
+  id: string;
+  plate: string;
+  vehicle_type: string;
+  fuel_norm_lph?: number | null;
+};
+type MachineLogRow = {
+  vehicle_id: string;
+  hours: number | null;
+  fuel_liters: number | null;
+  paired_hours?: number;
+  paired_fuel?: number;
+};
 
 const n = (v: unknown) => (v === null || v === undefined ? null : Number(v));
 export const unitLabel = (u: string) => UNITS[u as keyof typeof UNITS] ?? u;
-const categoryLabel = (c: string) => EXPENSE_CATEGORIES[c as keyof typeof EXPENSE_CATEGORIES] ?? c;
+const categoryLabel = (c: string) =>
+  EXPENSE_CATEGORIES[c as keyof typeof EXPENSE_CATEGORIES] ?? c;
 
 // Veritabanından gelen satırları rapora çevirir (saf fonksiyon, test edilebilir)
 export function summarizeReport(input: {
@@ -121,22 +157,42 @@ export function summarizeReport(input: {
   const byVehicle = new Map<string, ReportTrip>();
   for (const t of input.trips) {
     const v = vehicleById.get(t.vehicle_id);
-    const cur = byVehicle.get(t.vehicle_id) ?? { plate: v?.plate ?? "—", vehicleType: v?.vehicle_type ?? "", trips: 0, tonnage: 0 };
+    const cur = byVehicle.get(t.vehicle_id) ?? {
+      plate: v?.plate ?? "—",
+      vehicleType: v?.vehicle_type ?? "",
+      trips: 0,
+      tonnage: 0,
+    };
     cur.trips += t.trip_count;
-    cur.tonnage = Math.round((cur.tonnage + Number(t.tonnage ?? 0)) * 1000) / 1000;
+    cur.tonnage =
+      Math.round((cur.tonnage + Number(t.tonnage ?? 0)) * 1000) / 1000;
     byVehicle.set(t.vehicle_id, cur);
   }
-  const trips = [...byVehicle.values()].sort((a, b) => a.plate.localeCompare(b.plate, "tr"));
+  const trips = [...byVehicle.values()].sort((a, b) =>
+    a.plate.localeCompare(b.plate, "tr"),
+  );
 
   // Makineler: toplam saat ve mazot; L/saat yalnızca ikisinin birlikte girildiği kayıtlardan
-  const byMachine = new Map<string, { hours: number; fuel: number; pairedHours: number; pairedFuel: number }>();
+  const byMachine = new Map<
+    string,
+    { hours: number; fuel: number; pairedHours: number; pairedFuel: number }
+  >();
   for (const l of input.machineLogs ?? []) {
     const h = Number(l.hours ?? 0);
     const f = Number(l.fuel_liters ?? 0);
-    const m = byMachine.get(l.vehicle_id) ?? { hours: 0, fuel: 0, pairedHours: 0, pairedFuel: 0 };
+    const m = byMachine.get(l.vehicle_id) ?? {
+      hours: 0,
+      fuel: 0,
+      pairedHours: 0,
+      pairedFuel: 0,
+    };
     m.hours += h;
     m.fuel += f;
-    if (h && f) {
+    // Gün bazında toplanmış satırlarda eşleşen saat/mazot hazır gelir; tek kayıtta ikisi de girilmişse eşleşir
+    if (l.paired_hours !== undefined) {
+      m.pairedHours += Number(l.paired_hours);
+      m.pairedFuel += Number(l.paired_fuel ?? 0);
+    } else if (h && f) {
       m.pairedHours += h;
       m.pairedFuel += f;
     }
@@ -182,9 +238,12 @@ export function summarizeReport(input: {
       generalExpense: toTL(expenseNetK - directK),
       difference: toTL(amountK - expenseNetK),
       trips: trips.reduce((s, t) => s + t.trips, 0),
-      tonnage: Math.round(trips.reduce((s, t) => s + t.tonnage, 0) * 1000) / 1000,
-      machineHours: Math.round(machines.reduce((s, m) => s + m.hours, 0) * 100) / 100,
-      fuelLiters: Math.round(machines.reduce((s, m) => s + m.fuel, 0) * 100) / 100,
+      tonnage:
+        Math.round(trips.reduce((s, t) => s + t.tonnage, 0) * 1000) / 1000,
+      machineHours:
+        Math.round(machines.reduce((s, m) => s + m.hours, 0) * 100) / 100,
+      fuelLiters:
+        Math.round(machines.reduce((s, m) => s + m.fuel, 0) * 100) / 100,
     },
   };
 }
@@ -207,15 +266,19 @@ export async function loadReport(
   if (!site) return null;
 
   const args = { p_site: siteId, p_from: from, p_to: to };
-  const [prod, exp, trips, vehicles, machineLogs, pay] = await Promise.all([
+  const filter = { tenantId: tenant.id, siteId, from, to };
+  const [prod, exp, tripDays, vehicles, machineDays, pay] = await Promise.all([
     supabase.rpc("production_summary", args),
     supabase.rpc("expense_summary", args),
-    supabase.from("trip_entries").select("vehicle_id, trip_count, tonnage").eq("site_id", siteId).gte("entry_date", from).lte("entry_date", to),
-    supabase.from("vehicles").select("id, plate, vehicle_type, fuel_norm_lph").eq("tenant_id", tenant.id),
-    supabase.from("machine_logs").select("vehicle_id, hours, fuel_liters").eq("site_id", siteId).gte("log_date", from).lte("log_date", to),
+    loadTripDays(supabase, filter),
+    supabase
+      .from("vehicles")
+      .select("id, plate, vehicle_type, fuel_norm_lph")
+      .eq("tenant_id", tenant.id),
+    loadMachineDays(supabase, filter),
     loadContractorPayments(supabase, tenant.id, siteId, from, to),
   ]);
-  const failed = [prod, exp, trips, vehicles, machineLogs].find((r) => r.error);
+  const failed = [prod, exp, vehicles].find((r) => r.error);
   if (failed?.error) throw new Error("Rapor verisi alınamadı");
 
   return summarizeReport({
@@ -225,9 +288,17 @@ export async function loadReport(
     to,
     production: prod.data ?? [],
     expenses: exp.data ?? [],
-    trips: trips.data ?? [],
+    // Sefer toplamı: tonu girilmiş seferlerin tonu toplanır (tonsuzlar 0)
+    trips: tripDays.map((t) => ({
+      vehicle_id: t.vehicle_id,
+      trip_count: t.trips,
+      tonnage: t.tonnage,
+    })),
     vehicles: vehicles.data ?? [],
-    machineLogs: machineLogs.data ?? [],
-    vehicleCosts: { total: pay.total, lines: pay.contractors.reduce((n, c) => n + c.lines.length, 0) },
+    machineLogs: machineDays,
+    vehicleCosts: {
+      total: pay.total,
+      lines: pay.contractors.reduce((n, c) => n + c.lines.length, 0),
+    },
   });
 }

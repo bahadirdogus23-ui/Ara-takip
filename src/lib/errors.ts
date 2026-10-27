@@ -23,7 +23,10 @@ export function dbErrorMessage(error: DbError): string {
   return "İşlem kaydedilemedi, lütfen tekrar deneyin";
 }
 
-export function authErrorMessage(error: { code?: string; message?: string }): string {
+export function authErrorMessage(error: {
+  code?: string;
+  message?: string;
+}): string {
   switch (error.code) {
     case "invalid_credentials":
       return "E-posta veya şifre hatalı";

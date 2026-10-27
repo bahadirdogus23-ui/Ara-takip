@@ -26,11 +26,23 @@ export default async function SitePage({
   const { supabase, tenant } = await getContext();
 
   // Başka firmanın şantiyesi RLS nedeniyle hiç dönmez → 404
-  const [{ data: site }, { data: items }, { data: routes }] = await Promise.all([
-    supabase.from("sites").select("*").eq("id", id).eq("tenant_id", tenant.id).maybeSingle(),
-    supabase.from("work_items").select("*").eq("site_id", id).order("code", { nullsFirst: false }).order("name"),
-    supabase.from("routes").select("*").eq("site_id", id).order("name"),
-  ]);
+  const [{ data: site }, { data: items }, { data: routes }] = await Promise.all(
+    [
+      supabase
+        .from("sites")
+        .select("*")
+        .eq("id", id)
+        .eq("tenant_id", tenant.id)
+        .maybeSingle(),
+      supabase
+        .from("work_items")
+        .select("*")
+        .eq("site_id", id)
+        .order("code", { nullsFirst: false })
+        .order("name"),
+      supabase.from("routes").select("*").eq("site_id", id).order("name"),
+    ],
+  );
   if (!site) notFound();
   const manager = canManage(tenant.role);
   // Seferlerin imalat sayılabileceği kalemler: birimi sefer ya da ton olanlar
@@ -49,14 +61,19 @@ export default async function SitePage({
           <div>
             <h1 className="text-2xl font-bold">{site.name}</h1>
             <p className="text-sm text-muted">
-              {[site.code, site.employer, site.location].filter(Boolean).join(" · ") || "—"} ·{" "}
-              {formatDateTR(site.start_date)} – {formatDateTR(site.end_date)}
+              {[site.code, site.employer, site.location]
+                .filter(Boolean)
+                .join(" · ") || "—"}{" "}
+              · {formatDateTR(site.start_date)} – {formatDateTR(site.end_date)}
             </p>
           </div>
           <StatusBadge status={site.status} />
         </div>
         {kaydedildi && (
-          <p role="status" className="rounded-md bg-green-50 p-3 text-sm text-green-800">
+          <p
+            role="status"
+            className="rounded-md bg-green-50 p-3 text-sm text-green-800"
+          >
             Kaydedildi.
           </p>
         )}
@@ -72,7 +89,9 @@ export default async function SitePage({
 
       {manager && (
         <details className="card">
-          <summary className="cursor-pointer font-semibold">Şantiye bilgilerini düzenle</summary>
+          <summary className="cursor-pointer font-semibold">
+            Şantiye bilgilerini düzenle
+          </summary>
           <div className="mt-4">
             <SiteForm site={site} />
           </div>
@@ -88,12 +107,17 @@ export default async function SitePage({
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
                     <p className="font-medium">
-                      {wi.code && <span className="mr-2 text-muted">{wi.code}</span>}
+                      {wi.code && (
+                        <span className="mr-2 text-muted">{wi.code}</span>
+                      )}
                       {wi.name}
                     </p>
                     <p className="text-sm text-muted">
-                      {wi.unit_price === null ? "Birim fiyat yok" : `${formatTL(wi.unit_price)} / ${unitLabel(wi.unit)}`}
-                      {wi.planned_quantity !== null && ` · Plan: ${formatTrNumber(wi.planned_quantity)} ${unitLabel(wi.unit)}`}
+                      {wi.unit_price === null
+                        ? "Birim fiyat yok"
+                        : `${formatTL(wi.unit_price)} / ${unitLabel(wi.unit)}`}
+                      {wi.planned_quantity !== null &&
+                        ` · Plan: ${formatTrNumber(wi.planned_quantity)} ${unitLabel(wi.unit)}`}
                     </p>
                   </div>
                   {manager && (
@@ -106,7 +130,9 @@ export default async function SitePage({
                 </div>
                 {manager && (
                   <details className="mt-2">
-                    <summary className="cursor-pointer text-sm font-medium text-brand-strong">Düzenle</summary>
+                    <summary className="cursor-pointer text-sm font-medium text-brand-strong">
+                      Düzenle
+                    </summary>
                     <div className="mt-3">
                       <WorkItemForm siteId={site.id} item={wi} />
                     </div>
@@ -117,7 +143,8 @@ export default async function SitePage({
           </ul>
         ) : (
           <p className="card text-sm text-muted">
-            Henüz iş kalemi yok. İmalat girebilmek için en az bir iş kalemi (ör. &quot;Kazı, m³&quot;) tanımlayın.
+            Henüz iş kalemi yok. İmalat girebilmek için en az bir iş kalemi (ör.
+            &quot;Kazı, m³&quot;) tanımlayın.
           </p>
         )}
         {manager && (
@@ -138,21 +165,36 @@ export default async function SitePage({
                   <div className="min-w-0">
                     <p className="font-medium">{r.name}</p>
                     <p className="text-sm text-muted">
-                      {[r.origin, r.destination].filter(Boolean).join(" → ") || "—"}
-                      {r.distance_km !== null && ` · ${formatTrNumber(r.distance_km, 2)} km`}
-                      {r.trip_price !== null && ` · ${formatTL(r.trip_price)}/sefer`}
-                      {r.work_item_id && ` · seferler → ${itemName.get(r.work_item_id) ?? "iş kalemi"}`}
+                      {[r.origin, r.destination].filter(Boolean).join(" → ") ||
+                        "—"}
+                      {r.distance_km !== null &&
+                        ` · ${formatTrNumber(r.distance_km, 2)} km`}
+                      {r.trip_price !== null &&
+                        ` · ${formatTL(r.trip_price)}/sefer`}
+                      {r.work_item_id &&
+                        ` · seferler → ${itemName.get(r.work_item_id) ?? "iş kalemi"}`}
                       {(() => {
                         const limit = routeLimit(r);
-                        return limit && ` · ${limit.estimated ? "tahmini " : ""}en fazla ${limit.maxTrips} sefer/gün`;
+                        return (
+                          limit &&
+                          ` · ${limit.estimated ? "tahmini " : ""}en fazla ${limit.maxTrips} sefer/gün`
+                        );
                       })()}
                     </p>
                   </div>
-                  {manager && <DeleteButton action={deleteRoute} id={r.id} confirmText={`"${r.name}" silinsin mi?`} />}
+                  {manager && (
+                    <DeleteButton
+                      action={deleteRoute}
+                      id={r.id}
+                      confirmText={`"${r.name}" silinsin mi?`}
+                    />
+                  )}
                 </div>
                 {manager && (
                   <details className="mt-2">
-                    <summary className="cursor-pointer text-sm font-medium text-brand-strong">Düzenle</summary>
+                    <summary className="cursor-pointer text-sm font-medium text-brand-strong">
+                      Düzenle
+                    </summary>
                     <div className="mt-3">
                       <RouteForm siteId={site.id} route={r} items={tripItems} />
                     </div>
@@ -162,7 +204,9 @@ export default async function SitePage({
             ))}
           </ul>
         ) : (
-          <p className="card text-sm text-muted">Henüz güzergâh yok. Sefer girerken güzergâh seçmek isteğe bağlıdır.</p>
+          <p className="card text-sm text-muted">
+            Henüz güzergâh yok. Sefer girerken güzergâh seçmek isteğe bağlıdır.
+          </p>
         )}
         {manager && (
           <div className="card">

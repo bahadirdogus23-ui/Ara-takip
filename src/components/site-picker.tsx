@@ -4,7 +4,13 @@ import { MapPin } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
 
 // Şantiye seçimi: adres çubuğuna yazılır ve tarayıcıda hatırlanır
-export function SitePicker({ sites, siteId }: { sites: { id: string; name: string }[]; siteId: string }) {
+export function SitePicker({
+  sites,
+  siteId,
+}: {
+  sites: { id: string; name: string }[];
+  siteId: string;
+}) {
   const router = useRouter();
   const path = usePathname();
   if (sites.length < 2) {

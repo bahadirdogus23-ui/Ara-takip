@@ -49,10 +49,17 @@ export function pendingByVehicle(
 }
 
 // Geri al: bu araç için kuyruktaki en son seferi çıkarır
-export function withoutLastFor(queue: QueuedTap[], siteId: string, vehicleId: string): { queue: QueuedTap[]; removed: boolean } {
+export function withoutLastFor(
+  queue: QueuedTap[],
+  siteId: string,
+  vehicleId: string,
+): { queue: QueuedTap[]; removed: boolean } {
   for (let i = queue.length - 1; i >= 0; i--) {
     if (queue[i].siteId === siteId && queue[i].vehicleId === vehicleId) {
-      return { queue: [...queue.slice(0, i), ...queue.slice(i + 1)], removed: true };
+      return {
+        queue: [...queue.slice(0, i), ...queue.slice(i + 1)],
+        removed: true,
+      };
     }
   }
   return { queue, removed: false };

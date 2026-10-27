@@ -14,7 +14,8 @@ export default async function SignInPage({
       <h1 className="mb-4 text-xl font-bold">Giriş yap</h1>
       {dogrula && (
         <p className="mb-4 rounded-md bg-amber-50 p-3 text-sm text-amber-900">
-          Hesabınız oluşturuldu. E-posta adresinize gelen bağlantıya tıklayıp ardından giriş yapın.
+          Hesabınız oluşturuldu. E-posta adresinize gelen bağlantıya tıklayıp
+          ardından giriş yapın.
         </p>
       )}
       {hata && (

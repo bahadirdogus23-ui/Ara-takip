@@ -10,6 +10,7 @@ import { readFilters } from "@/lib/filters";
 import { formatDateTR, formatTL, isoDateTR } from "@/lib/format";
 import { expenseTotals, toKurus, toTL } from "@/lib/money";
 import { formatTrNumber } from "@/lib/number";
+import { fetchAll } from "@/lib/summaries";
 import { EXPENSE_CATEGORIES } from "@/lib/validation";
 import { deleteExpense } from "./actions";
 import { ExpenseForm } from "./expense-form";
@@ -47,22 +48,26 @@ export default async function ExpensesPage({
   const siteName = new Map(sites?.map((s) => [s.id, s.name]));
   const itemName = new Map(items?.map((i) => [i.id, i.name]));
 
-  let q = supabase
-    .from("expenses")
-    .select(
-      "id, site_id, work_item_id, expense_date, category, amount, vat_rate, supplier, description",
-    )
-    .eq("tenant_id", tenant.id)
-    .gte("expense_date", from)
-    .lte("expense_date", to)
-    .order("expense_date", { ascending: false })
-    .order("created_at", { ascending: false })
-    .limit(LIMIT);
-  if (siteId) q = q.eq("site_id", siteId);
-  const { data: rows, error } = await q;
-  if (error) throw new Error("Giderler alınamadı");
+  // Toplamlar dönemin tüm giderlerinden (sayfa sayfa okunur); listede son LIMIT gider gösterilir
+  const allRows = await fetchAll((a, b) => {
+    let q = supabase
+      .from("expenses")
+      .select(
+        "id, site_id, work_item_id, expense_date, category, amount, vat_rate, supplier, description",
+      )
+      .eq("tenant_id", tenant.id)
+      .gte("expense_date", from)
+      .lte("expense_date", to)
+      .order("expense_date", { ascending: false })
+      .order("created_at", { ascending: false })
+      .order("id")
+      .range(a, b);
+    if (siteId) q = q.eq("site_id", siteId);
+    return q;
+  });
+  const rows = allRows.slice(0, LIMIT);
 
-  const { net, vat } = expenseTotals(rows);
+  const { net, vat } = expenseTotals(allRows);
   // Kiralık ve taşeron araçlar: araç ve güzergâh ücretlerinden otomatik (Taşeron hakedişi ile aynı hesap)
   const pay = await loadContractorPayments(
     supabase,
@@ -138,9 +143,10 @@ export default async function ExpensesPage({
             ))}
           </ul>
         )}
-        {rows.length === LIMIT && (
+        {allRows.length > LIMIT && (
           <p className="text-xs text-amber-700">
-            İlk {LIMIT} kayıt gösteriliyor; aralığı daraltın.
+            Toplamlar {allRows.length} giderin tamamından; aşağıda son {LIMIT}{" "}
+            gider listeleniyor.
           </p>
         )}
       </section>
