@@ -20,6 +20,7 @@ gider ve dönem raporu takip uygulaması.
 - Telefona uygulama gibi kurulur (Ana ekrana ekle)
 
 - Mimari plan, ekranlar, riskler, kabul testleri: [`docs/01-mimari-plan.md`](docs/01-mimari-plan.md)
+- Hata analizi, rakip analizi ve yol haritası (yapay zekâya verilecek prompt): [`docs/02-hata-ve-pazar-analizi.md`](docs/02-hata-ve-pazar-analizi.md)
 - Veritabanı şeması (taslak): [`supabase/migrations/`](supabase/migrations/)
 - Veritabanı testleri: [`supabase/tests/`](supabase/tests/)
 
