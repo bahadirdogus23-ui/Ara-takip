@@ -66,7 +66,11 @@ const isActive = (path: string, href: string) =>
 export function DesktopNav(access: Access) {
   const path = usePathname();
   return (
-    <nav className="mx-auto hidden max-w-5xl gap-1 px-2 md:flex">
+    // Geniş ekranda tüm öğeler görünsün: sığmayan öğeler ikinci satıra iner (tablet/dizüstü)
+    <nav
+      aria-label="Üst menü"
+      className="mx-auto hidden max-w-5xl flex-wrap gap-x-1 px-2 md:flex"
+    >
       {visibleItems(access).map(({ href, label, icon: Icon }) => {
         const active = isActive(path, href);
         return (

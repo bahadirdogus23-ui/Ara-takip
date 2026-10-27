@@ -4,7 +4,7 @@ import type { Database } from "@/lib/database.types";
 import { supabaseEnv } from "@/lib/env";
 
 // Oturum açmadan girilebilen sayfalar
-const PUBLIC_PATHS = ["/giris", "/kayit", "/auth"];
+const PUBLIC_PATHS = ["/giris", "/kayit", "/auth", "/sifre-unuttum"];
 
 export async function updateSession(request: NextRequest) {
   let response = NextResponse.next({ request });

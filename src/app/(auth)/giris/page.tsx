@@ -24,6 +24,11 @@ export default async function SignInPage({
         </p>
       )}
       <SignInForm next={sonra} />
+      <p className="mt-4 text-center text-sm">
+        <Link href="/sifre-unuttum" className="link">
+          Şifremi unuttum
+        </Link>
+      </p>
       <p className="mt-6 text-center text-sm text-muted">
         Hesabınız yok mu?{" "}
         <Link href="/kayit" className="link">

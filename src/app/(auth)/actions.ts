@@ -2,20 +2,19 @@
 
 import { redirect } from "next/navigation";
 import { authErrorMessage } from "@/lib/errors";
+import { safePath } from "@/lib/safe-path";
 import { createClient } from "@/lib/supabase/server";
 import {
   formValues,
+  newPasswordSchema,
+  resetRequestSchema,
   signInSchema,
   signUpSchema,
   toFieldErrors,
   type FormState,
 } from "@/lib/validation";
 
-// Yalnızca uygulama içi yollara yönlendir (açık yönlendirme açığını önler)
-function safeNext(value: FormDataEntryValue | null): string {
-  const v = typeof value === "string" ? value : "";
-  return v.startsWith("/") && !v.startsWith("//") ? v : "/panel";
-}
+const safeNext = (value: FormDataEntryValue | null) => safePath(value);
 
 export async function signIn(
   _prev: FormState,
@@ -60,4 +59,53 @@ export async function signOut() {
   const supabase = await createClient();
   await supabase.auth.signOut();
   redirect("/giris");
+}
+
+// Şifremi unuttum: e-posta kayıtlı olsun olmasın aynı mesaj (kimin kayıtlı olduğu belli olmasın)
+export async function requestPasswordReset(
+  _prev: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  const values = formValues(formData);
+  const parsed = resetRequestSchema.safeParse(values);
+  if (!parsed.success)
+    return { fieldErrors: toFieldErrors(parsed.error), values };
+
+  const supabase = await createClient();
+  const { error } = await supabase.auth.resetPasswordForEmail(
+    parsed.data.email,
+    {
+      redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/auth/callback?sonra=/sifre-yenile`,
+    },
+  );
+  if (
+    error?.code === "over_email_send_rate_limit" ||
+    error?.code === "over_request_rate_limit"
+  ) {
+    return { error: authErrorMessage(error), values };
+  }
+  if (error) console.error("Şifre sıfırlama e-postası:", error);
+  return {
+    ok: "gonderildi",
+    message:
+      "E-posta adresi kayıtlıysa şifre yenileme bağlantısı gönderildi. Gelen kutunuzu kontrol edin.",
+  };
+}
+
+// Yeni şifre: e-postadaki bağlantıyla açılan oturumda (ya da giriş yapmış kullanıcı) belirlenir
+export async function updatePassword(
+  _prev: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  const values = formValues(formData);
+  const parsed = newPasswordSchema.safeParse(values);
+  if (!parsed.success)
+    return { fieldErrors: toFieldErrors(parsed.error), values: {} };
+
+  const supabase = await createClient();
+  const { error } = await supabase.auth.updateUser({
+    password: parsed.data.password,
+  });
+  if (error) return { error: authErrorMessage(error) };
+  redirect("/panel?sifre=1");
 }

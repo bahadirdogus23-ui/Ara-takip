@@ -53,9 +53,9 @@ const longDate = () =>
 export default async function TodayPage({
   searchParams,
 }: {
-  searchParams: Promise<{ santiye?: string; hazir?: string }>;
+  searchParams: Promise<{ santiye?: string; hazir?: string; sifre?: string }>;
 }) {
-  const { santiye, hazir } = await searchParams;
+  const { santiye, hazir, sifre } = await searchParams;
   const { supabase, user, tenant } = await getContext();
   const manager = canManage(tenant.role);
 
@@ -66,11 +66,17 @@ export default async function TodayPage({
     .eq("status", "active")
     .order("name");
   const site = await pickSite(sites ?? [], santiye);
+  const passwordNotice = sifre && (
+    <p role="status" className="rounded-xl bg-green-50 p-3 text-sm text-green-800 dark:bg-green-950 dark:text-green-300">
+      Şifreniz değiştirildi.
+    </p>
+  );
 
   if (!site) {
     return (
       <div className="mx-auto max-w-lg space-y-4">
         <Heading />
+        {passwordNotice}
         <div className="card text-center">
           <Rocket className="mx-auto size-10 text-brand" aria-hidden />
           <h2 className="mt-2 text-lg font-bold">Bir dakikada başlayın</h2>
@@ -223,6 +229,8 @@ export default async function TodayPage({
     <div className="mx-auto max-w-3xl space-y-5">
       <Heading />
       <SitePicker sites={sites ?? []} siteId={site.id} />
+
+      {passwordNotice}
 
       {hazir && (
         <p

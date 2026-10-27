@@ -87,6 +87,27 @@ export const signInSchema = z.object({
   password: z.string().min(1, "Şifrenizi girin"),
 });
 
+export const resetRequestSchema = z.object({
+  email: z
+    .string()
+    .trim()
+    .toLowerCase()
+    .pipe(z.email("Geçerli bir e-posta adresi girin")),
+});
+
+export const newPasswordSchema = z
+  .object({
+    password: z
+      .string()
+      .min(8, "Şifre en az 8 karakter olmalı")
+      .max(72, "Şifre en fazla 72 karakter olabilir"),
+    password_again: z.string(),
+  })
+  .refine((v) => v.password === v.password_again, {
+    path: ["password_again"],
+    message: "Şifreler aynı değil",
+  });
+
 export const signUpSchema = z.object({
   email: z
     .string()

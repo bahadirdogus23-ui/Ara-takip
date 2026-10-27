@@ -22,6 +22,13 @@ export default async function MenuPage() {
         Başka bir firma ekle
         <ChevronRight className="size-5 text-muted" aria-hidden />
       </Link>
+      <Link
+        href="/sifre-yenile"
+        className="card flex items-center justify-between py-4 text-sm font-medium"
+      >
+        Şifremi değiştir
+        <ChevronRight className="size-5 text-muted" aria-hidden />
+      </Link>
       <SignOutButton
         className="btn-secondary w-full gap-2 text-red-700 dark:text-red-400"
         label="Çıkış yap"

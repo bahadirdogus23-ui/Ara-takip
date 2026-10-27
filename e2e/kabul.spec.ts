@@ -766,6 +766,78 @@ test("K15: 1200 seferde rapor, hakediş ve kayıtlar eksiksiz (1000 satır sın�
   await page.context().close();
 });
 
+test("K18: şifremi unuttum ve şifre değiştirme", async ({ browser }) => {
+  const page = await newPage(browser);
+  const u = { email: `sifre-${run}@hafriyol.local`, password: "Sifre-12345" };
+  await signUp(page, u);
+  await createTenant(page, "Şifre Deneme İnşaat");
+
+  // Yeni şifre (menüden); eski şifre artık çalışmaz, yenisiyle girilir
+  await page.goto("/menu");
+  await page.getByRole("link", { name: "Şifremi değiştir" }).click();
+  await page.locator("#password").fill("Yeni-Sifre-678");
+  await page.locator("#password_again").fill("Baska-Sifre-678");
+  await page.getByRole("button", { name: "Şifreyi kaydet" }).click();
+  await expect(page.getByText("Şifreler aynı değil")).toBeVisible();
+  await page.locator("#password").fill("Yeni-Sifre-678");
+  await page.locator("#password_again").fill("Yeni-Sifre-678");
+  await page.getByRole("button", { name: "Şifreyi kaydet" }).click();
+  await page.waitForURL("**/panel?sifre=1");
+  await expect(page.getByText("Şifreniz değiştirildi.")).toBeVisible();
+  await page.context().clearCookies();
+
+  await page.goto("/giris");
+  await page.locator("#email").fill(u.email);
+  await page.locator("#password").fill(u.password);
+  await page.getByRole("button", { name: "Giriş yap" }).click();
+  await expect(page.getByText("E-posta veya şifre hatalı")).toBeVisible();
+  await signIn(page, { email: u.email, password: "Yeni-Sifre-678" });
+  await page.context().clearCookies();
+
+  // Şifremi unuttum: kayıtlı olsun olmasın aynı mesaj (kimin kayıtlı olduğu belli olmaz)
+  for (const email of [u.email, `yok-${run}@hafriyol.local`]) {
+    await page.goto("/giris");
+    await page.getByRole("link", { name: "Şifremi unuttum" }).click();
+    await page.locator("#email").fill(email);
+    await page.getByRole("button", { name: "Bağlantı gönder" }).click();
+    await expect(
+      page.getByText(
+        "E-posta adresi kayıtlıysa şifre yenileme bağlantısı gönderildi",
+      ),
+    ).toBeVisible();
+  }
+  // Başka siteye yönlendirme denemesi uygulama içinde kalır
+  await page.goto("/giris?sonra=%2F%5Cevil.example");
+  await page.locator("#email").fill(u.email);
+  await page.locator("#password").fill("Yeni-Sifre-678");
+  await page.getByRole("button", { name: "Giriş yap" }).click();
+  await page.waitForURL("**/panel");
+  await page.context().close();
+});
+
+test("K20: tablet ve dizüstünde menünün tüm öğeleri ekranda", async ({
+  browser,
+}) => {
+  for (const width of [768, 1024, 1280]) {
+    const page = await newPage(browser);
+    await page.setViewportSize({ width, height: 800 });
+    await signIn(page, owner);
+    const links = page
+      .getByRole("navigation", { name: "Üst menü" })
+      .getByRole("link");
+    expect(await links.count()).toBeGreaterThanOrEqual(12);
+    for (const link of await links.all()) {
+      const box = (await link.boundingBox())!;
+      expect(
+        box.x + box.width,
+        `${width}px: ${await link.innerText()} ekran dışında`,
+      ).toBeLessThanOrEqual(width);
+    }
+    await expectNoHorizontalScroll(page);
+    await page.context().close();
+  }
+});
+
 test("K8: başka firma hiçbir veriyi göremez", async ({ browser }) => {
   const page = await newPage(browser);
   await signUp(page, other);
