@@ -84,14 +84,41 @@ export async function quickSetup(
     const known = new Set(existing?.map((v) => v.plate));
     const fresh = vehicles.filter((v) => !known.has(v.plate));
     if (fresh.length) {
-      const { error: e } = await supabase
+      const { data: inserted, error: e } = await supabase
         .from("vehicles")
-        .insert(fresh.map((v) => ({ ...v, tenant_id: tenant.id })));
+        .insert(
+          fresh.map((v) => ({
+            tenant_id: tenant.id,
+            plate: v.plate,
+            vehicle_type: v.vehicle_type,
+            capacity_ton: v.capacity_ton,
+            ownership: v.ownership,
+          })),
+        )
+        .select("id, plate");
       if (e)
         return {
           error: `Şantiye açıldı ama araçlar eklenemedi: ${dbErrorMessage(e)}`,
           values,
         };
+      // Günlük kira ayrı tabloda (yalnızca sahibi/yönetici görür)
+      const rates = fresh
+        .filter((v) => v.daily_rate !== null)
+        .map((v) => ({
+          vehicle_id: inserted.find((x) => x.plate === v.plate)!.id,
+          tenant_id: tenant.id,
+          daily_rate: v.daily_rate,
+        }));
+      if (rates.length) {
+        const { error: re } = await supabase
+          .from("vehicle_rates")
+          .insert(rates);
+        if (re)
+          return {
+            error: `Araçlar eklendi ama kiraları kaydedilemedi: ${dbErrorMessage(re)}`,
+            values,
+          };
+      }
     }
   }
 

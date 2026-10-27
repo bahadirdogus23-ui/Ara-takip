@@ -299,6 +299,64 @@ export type Database = {
         Update: Partial<Database["public"]["Tables"]["vehicles"]["Insert"]>;
         Relationships: Rel[];
       };
+      work_item_prices: {
+        Row: {
+          work_item_id: string;
+          tenant_id: string;
+          site_id: string;
+          unit_price: number | null;
+          updated_at: string;
+        };
+        Insert: {
+          work_item_id: string;
+          tenant_id: string;
+          site_id: string;
+          unit_price?: number | null;
+          updated_at?: string;
+        };
+        Update: Partial<
+          Database["public"]["Tables"]["work_item_prices"]["Insert"]
+        >;
+        Relationships: Rel[];
+      };
+      route_prices: {
+        Row: {
+          route_id: string;
+          tenant_id: string;
+          site_id: string;
+          trip_price: number | null;
+          updated_at: string;
+        };
+        Insert: {
+          route_id: string;
+          tenant_id: string;
+          site_id: string;
+          trip_price?: number | null;
+          updated_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["route_prices"]["Insert"]>;
+        Relationships: Rel[];
+      };
+      vehicle_rates: {
+        Row: {
+          vehicle_id: string;
+          tenant_id: string;
+          hourly_rate: number | null;
+          daily_rate: number | null;
+          updated_at: string;
+        };
+        Insert: {
+          vehicle_id: string;
+          tenant_id: string;
+          hourly_rate?: number | null;
+          daily_rate?: number | null;
+          updated_at?: string;
+        };
+        Update: Partial<
+          Database["public"]["Tables"]["vehicle_rates"]["Insert"]
+        >;
+        Relationships: Rel[];
+      };
       work_items: {
         Row: {
           code: string | null;

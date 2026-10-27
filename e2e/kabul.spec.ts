@@ -241,6 +241,11 @@ test("K6: saha personeli giderleri ve raporu göremez", async ({
 
   await fieldPage.goto("/giderler");
   await fieldPage.waitForURL("**/panel");
+  // K17: saha personeli birim fiyat, sefer ücreti ve kira görmez (ekranda da veritabanında da)
+  for (const path of [siteUrl, "/araclar", "/panel"]) {
+    await fieldPage.goto(path);
+    await expect(fieldPage.locator("main")).not.toContainText("₺");
+  }
   const siteId = siteUrl.split("/").pop()!;
   expect(
     (await fieldPage.request.get(`/rapor/excel?santiye=${siteId}`)).status(),

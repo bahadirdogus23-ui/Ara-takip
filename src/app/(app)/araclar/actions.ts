@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { deleteRow, isUuid } from "@/lib/actions";
 import { canManage, getContext } from "@/lib/context";
 import { dbErrorMessage } from "@/lib/errors";
+import { saveVehicleRates } from "@/lib/prices";
 import {
   formValues,
   toFieldErrors,
@@ -26,8 +27,10 @@ export async function saveVehicle(
     return { fieldErrors: toFieldErrors(parsed.error), values };
 
   const editId = isUuid(values.id) ? values.id : null;
-  const row = { ...parsed.data, tenant_id: tenant.id };
-  const { error } = editId
+  // Kira ücretleri ayrı tabloda (yalnızca sahibi/yönetici görür)
+  const { hourly_rate, daily_rate, ...vehicle } = parsed.data;
+  const row = { ...vehicle, tenant_id: tenant.id };
+  const { data, error } = editId
     ? await supabase
         .from("vehicles")
         .update(row)
@@ -43,6 +46,13 @@ export async function saveVehicle(
       values,
     };
   if (error) return { error: dbErrorMessage(error), values };
+  const rates = await saveVehicleRates(supabase, {
+    vehicle_id: data.id,
+    tenant_id: tenant.id,
+    hourly_rate,
+    daily_rate,
+  });
+  if (rates.error) return { error: dbErrorMessage(rates.error), values };
 
   revalidatePath("/araclar");
   return {

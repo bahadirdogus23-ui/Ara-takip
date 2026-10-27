@@ -7,6 +7,7 @@ import { canManage, getContext } from "@/lib/context";
 import { formatDateTR, formatTL } from "@/lib/format";
 import { routeLimit } from "@/lib/field-checks";
 import { formatTrNumber } from "@/lib/number";
+import { loadPrices } from "@/lib/prices";
 import { UNITS } from "@/lib/validation";
 import { SiteForm } from "../site-form";
 import { deleteRoute, deleteWorkItem } from "./actions";
@@ -45,6 +46,16 @@ export default async function SitePage({
   );
   if (!site) notFound();
   const manager = canManage(tenant.role);
+  // Fiyatlar yalnızca sahibi/yöneticiye (saha personeli için veritabanı boş döner)
+  const prices = manager ? await loadPrices(supabase, tenant.id) : null;
+  const itemsP = (items ?? []).map((i) => ({
+    ...i,
+    unit_price: prices?.item.get(i.id) ?? null,
+  }));
+  const routesP = (routes ?? []).map((r) => ({
+    ...r,
+    trip_price: prices?.route.get(r.id) ?? null,
+  }));
   // Seferlerin imalat sayılabileceği kalemler: birimi sefer ya da ton olanlar
   const tripItems = (items ?? [])
     .filter((i) => i.unit === "sefer" || i.unit === "ton")
@@ -100,9 +111,9 @@ export default async function SitePage({
 
       <section className="space-y-3">
         <h2 className="text-lg font-bold">İş kalemleri</h2>
-        {items?.length ? (
+        {itemsP.length ? (
           <ul className="divide-y divide-line overflow-hidden rounded-xl border border-line bg-surface">
-            {items.map((wi) => (
+            {itemsP.map((wi) => (
               <li key={wi.id} className="px-4 py-3">
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
@@ -113,9 +124,12 @@ export default async function SitePage({
                       {wi.name}
                     </p>
                     <p className="text-sm text-muted">
-                      {wi.unit_price === null
-                        ? "Birim fiyat yok"
-                        : `${formatTL(wi.unit_price)} / ${unitLabel(wi.unit)}`}
+                      {/* Fiyat yalnızca sahibi/yöneticiye gösterilir */}
+                      {manager
+                        ? wi.unit_price === null
+                          ? "Birim fiyat yok"
+                          : `${formatTL(wi.unit_price)} / ${unitLabel(wi.unit)}`
+                        : `Birim: ${unitLabel(wi.unit)}`}
                       {wi.planned_quantity !== null &&
                         ` · Plan: ${formatTrNumber(wi.planned_quantity)} ${unitLabel(wi.unit)}`}
                     </p>
@@ -157,9 +171,9 @@ export default async function SitePage({
 
       <section className="space-y-3">
         <h2 className="text-lg font-bold">Güzergâhlar</h2>
-        {routes?.length ? (
+        {routesP.length ? (
           <ul className="divide-y divide-line overflow-hidden rounded-xl border border-line bg-surface">
-            {routes.map((r) => (
+            {routesP.map((r) => (
               <li key={r.id} className="px-4 py-3">
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
@@ -169,7 +183,8 @@ export default async function SitePage({
                         "—"}
                       {r.distance_km !== null &&
                         ` · ${formatTrNumber(r.distance_km, 2)} km`}
-                      {r.trip_price !== null &&
+                      {manager &&
+                        r.trip_price !== null &&
                         ` · ${formatTL(r.trip_price)}/sefer`}
                       {r.work_item_id &&
                         ` · seferler → ${itemName.get(r.work_item_id) ?? "iş kalemi"}`}

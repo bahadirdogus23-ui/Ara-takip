@@ -1,6 +1,7 @@
 import { DeleteButton } from "@/components/form";
 import { canManage, getContext } from "@/lib/context";
 import { formatTrNumber } from "@/lib/number";
+import { loadPrices } from "@/lib/prices";
 import { VEHICLE_OWNERSHIP } from "@/lib/validation";
 import { deleteVehicle } from "./actions";
 import { VehicleForm } from "./vehicle-form";
@@ -17,18 +18,27 @@ export default async function VehiclesPage() {
     .order("plate");
   if (error) throw new Error("Araçlar alınamadı");
   const manager = canManage(tenant.role);
+  // Kira ücretleri ayrı tabloda, yalnızca sahibi/yöneticiye açık
+  const rates = manager
+    ? (await loadPrices(supabase, tenant.id)).vehicle
+    : new Map();
+  const withRates = vehicles.map((v) => ({
+    ...v,
+    hourly_rate: rates.get(v.id)?.hourly_rate ?? null,
+    daily_rate: rates.get(v.id)?.daily_rate ?? null,
+  }));
 
   return (
     <div className="mx-auto max-w-3xl space-y-4">
       <h1 className="text-2xl font-bold">Araçlar ve iş makineleri</h1>
 
-      {vehicles.length === 0 ? (
+      {withRates.length === 0 ? (
         <p className="card text-sm text-muted">
           Henüz araç yok. Sefer girebilmek için en az bir araç ekleyin.
         </p>
       ) : (
         <ul className="divide-y divide-line overflow-hidden rounded-xl border border-line bg-surface">
-          {vehicles.map((v) => (
+          {withRates.map((v) => (
             <li
               key={v.id}
               className={`px-4 py-3 ${v.active ? "" : "opacity-60"}`}

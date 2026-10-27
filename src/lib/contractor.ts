@@ -2,6 +2,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/lib/database.types";
 import { routeLimit } from "@/lib/field-checks";
 import { toKurus, toTL } from "@/lib/money";
+import { loadPrices } from "@/lib/prices";
 import { loadMachineDays, loadTripDays } from "@/lib/summaries";
 
 // Taşeron / kiralık araç hakedişi: dönemdeki seferler × güzergâh sefer ücreti,
@@ -210,24 +211,30 @@ export async function loadContractorPayments(
   to: string,
 ) {
   const filter = { tenantId, siteId, from, to };
-  const [v, r, tripDays, machineDays] = await Promise.all([
+  const [v, r, prices, tripDays, machineDays] = await Promise.all([
     supabase
       .from("vehicles")
-      .select(
-        "id, plate, vehicle_type, ownership, contractor_name, hourly_rate, daily_rate",
-      )
+      .select("id, plate, vehicle_type, ownership, contractor_name")
       .eq("tenant_id", tenantId),
     supabase
       .from("routes")
-      .select("id, name, trip_price, cycle_minutes, distance_km")
+      .select("id, name, cycle_minutes, distance_km")
       .eq("tenant_id", tenantId),
+    loadPrices(supabase, tenantId),
     loadTripDays(supabase, filter),
     loadMachineDays(supabase, filter),
   ]);
   if (v.error || r.error) throw new Error("Hakediş verisi alınamadı");
   return computeContractorPayments({
-    vehicles: v.data,
-    routes: r.data,
+    vehicles: v.data.map((x) => ({
+      ...x,
+      hourly_rate: prices.vehicle.get(x.id)?.hourly_rate ?? null,
+      daily_rate: prices.vehicle.get(x.id)?.daily_rate ?? null,
+    })),
+    routes: r.data.map((x) => ({
+      ...x,
+      trip_price: prices.route.get(x.id) ?? null,
+    })),
     trips: tripDays.map((t) => ({
       vehicle_id: t.vehicle_id,
       route_id: t.route_id,

@@ -35,9 +35,10 @@ insert into public.memberships(tenant_id, user_id, role)
   values (:'tenant_a', '00000000-0000-0000-0000-0000000000a2', 'field');
 insert into public.sites(tenant_id, name) values (:'tenant_a', 'Çevre Yolu 1. Kısım')
   returning id as site_a \gset
-insert into public.work_items(tenant_id, site_id, code, name, unit, unit_price, planned_quantity)
-  values (:'tenant_a', :'site_a', '15.150.1001', 'Kazı (yumuşak toprak)', 'm3', 85.50, 10000)
+insert into public.work_items(tenant_id, site_id, code, name, unit, planned_quantity)
+  values (:'tenant_a', :'site_a', '15.150.1001', 'Kazı (yumuşak toprak)', 'm3', 10000)
   returning id as item_a \gset
+insert into public.work_item_prices(work_item_id, tenant_id, site_id, unit_price) values (:'item_a', :'tenant_a', :'site_a', 85.50);
 insert into public.vehicles(tenant_id, plate, vehicle_type, capacity_ton)
   values (:'tenant_a', '06 ABC 123', 'kamyon', 25)
   returning id as vehicle_a \gset
@@ -47,9 +48,10 @@ select pg_temp.login('00000000-0000-0000-0000-00000000000b');
 select public.create_tenant('B Altyapı AŞ') as tenant_b \gset
 insert into public.sites(tenant_id, name) values (:'tenant_b', 'Kanalizasyon Hattı')
   returning id as site_b \gset
-insert into public.work_items(tenant_id, site_id, name, unit, unit_price)
-  values (:'tenant_b', :'site_b', 'Boru döşeme', 'm', 400)
+insert into public.work_items(tenant_id, site_id, name, unit)
+  values (:'tenant_b', :'site_b', 'Boru döşeme', 'm')
   returning id as item_b \gset
+insert into public.work_item_prices(work_item_id, tenant_id, site_id, unit_price) values (:'item_b', :'tenant_b', :'site_b', 400);
 reset role;
 
 -- ---------------------------------------------------------------------------
@@ -322,10 +324,12 @@ select pg_temp.check((select count(*) from public.photos) = 1, 'T17e Kayıt baş
 
 -- T18: Güzergâh iş kalemine bağlanınca seferler imalat sayılır
 select pg_temp.login('00000000-0000-0000-0000-00000000000a');
-insert into public.work_items(tenant_id, site_id, name, unit, unit_price)
-  values (:'tenant_a', :'site_a', 'Hafriyat nakliyesi', 'sefer', 750) returning id as item_sefer \gset
-insert into public.work_items(tenant_id, site_id, name, unit, unit_price)
-  values (:'tenant_a', :'site_a', 'Kırma taş', 'ton', 40) returning id as item_ton \gset
+insert into public.work_items(tenant_id, site_id, name, unit)
+  values (:'tenant_a', :'site_a', 'Hafriyat nakliyesi', 'sefer') returning id as item_sefer \gset
+insert into public.work_items(tenant_id, site_id, name, unit)
+  values (:'tenant_a', :'site_a', 'Kırma taş', 'ton') returning id as item_ton \gset
+insert into public.work_item_prices(work_item_id, tenant_id, site_id, unit_price) values
+  (:'item_sefer', :'tenant_a', :'site_a', 750), (:'item_ton', :'tenant_a', :'site_a', 40);
 insert into public.routes(tenant_id, site_id, name, work_item_id) values (:'tenant_a', :'site_a', 'Döküm', :'item_sefer') returning id as route_sefer \gset
 insert into public.routes(tenant_id, site_id, name, work_item_id) values (:'tenant_a', :'site_a', 'Taş ocağı', :'item_ton') returning id as route_ton \gset
 insert into public.trip_entries(tenant_id, site_id, vehicle_id, route_id, entry_date, trip_count) values
@@ -356,6 +360,28 @@ reset role;
 select pg_temp.login('00000000-0000-0000-0000-00000000000b');
 select pg_temp.check((select count(*) from public.trip_day_summary(:'tenant_a', null, '2026-01-01', '2026-12-31')) = 0, 'T19d Başka firma sefer özetini göremez');
 select pg_temp.check((select count(*) from public.machine_day_summary(:'tenant_a', null, '2026-01-01', '2026-12-31')) = 0, 'T19e Başka firma makine özetini göremez');
+reset role;
+
+-- T20: Fiyatlar yalnızca firma sahibi/yöneticiye açık
+select pg_temp.login('00000000-0000-0000-0000-00000000000a');
+insert into public.route_prices(route_id, tenant_id, site_id, trip_price) values (:'route_sefer', :'tenant_a', :'site_a', 900);
+insert into public.vehicle_rates(vehicle_id, tenant_id, daily_rate) values (:'vehicle_a', :'tenant_a', 9000);
+select pg_temp.check((select count(*) from public.work_item_prices) = 3 and (select count(*) from public.vehicle_rates) = 1, 'T20a Yönetici fiyatları görür');
+reset role;
+select pg_temp.login('00000000-0000-0000-0000-0000000000a2');
+select pg_temp.check((select count(*) from public.work_item_prices) = 0, 'T20b Saha personeli iş kalemi birim fiyatını göremez');
+select pg_temp.check((select count(*) from public.route_prices) = 0, 'T20c Saha personeli taşeron sefer ücretini göremez');
+select pg_temp.check((select count(*) from public.vehicle_rates) = 0, 'T20d Saha personeli araç kirasını göremez');
+select pg_temp.check(s.unit_price is null and s.amount is null, 'T20e Saha personeline dönem özetinde tutar dönmez')
+  from public.production_summary(:'site_a', '2026-10-26', '2026-10-26') s where s.work_item_id = :'item_sefer';
+\set ON_ERROR_STOP off
+insert into public.vehicle_rates(vehicle_id, tenant_id, hourly_rate) values (:'vehicle_a', :'tenant_a', 1);
+update public.vehicle_rates set daily_rate = 1;
+\set ON_ERROR_STOP on
+reset role;
+select pg_temp.check((select daily_rate from public.vehicle_rates where vehicle_id = :'vehicle_a') = 9000, 'T20f Saha personeli ücret yazamaz');
+select pg_temp.login('00000000-0000-0000-0000-00000000000b');
+select pg_temp.check((select count(*) from public.work_item_prices where tenant_id = :'tenant_a') + (select count(*) from public.route_prices) + (select count(*) from public.vehicle_rates) = 0, 'T20g Başka firma fiyatları göremez');
 reset role;
 
 \echo 'TÜM VERİTABANI TESTLERİ GEÇTİ'
