@@ -5,6 +5,9 @@
 
 \set ON_ERROR_STOP on
 
+-- Tarih kuralları (saha personeline 7 gün, dönem kilidi) için "bugün" sabitlenir
+set hafriyol.today = '2026-10-05';
+
 -- Test kullanıcıları
 insert into auth.users(id, email) values
   ('00000000-0000-0000-0000-00000000000a', 'sahip-a@test'),
@@ -38,7 +41,7 @@ insert into public.sites(tenant_id, name) values (:'tenant_a', 'Çevre Yolu 1. K
 insert into public.work_items(tenant_id, site_id, code, name, unit, planned_quantity)
   values (:'tenant_a', :'site_a', '15.150.1001', 'Kazı (yumuşak toprak)', 'm3', 10000)
   returning id as item_a \gset
-insert into public.work_item_prices(work_item_id, tenant_id, site_id, unit_price) values (:'item_a', :'tenant_a', :'site_a', 85.50);
+insert into public.work_item_price_history(work_item_id, tenant_id, site_id, valid_from, unit_price) values (:'item_a', :'tenant_a', :'site_a', '2000-01-01', 85.50);
 insert into public.vehicles(tenant_id, plate, vehicle_type, capacity_ton)
   values (:'tenant_a', '06 ABC 123', 'kamyon', 25)
   returning id as vehicle_a \gset
@@ -51,7 +54,7 @@ insert into public.sites(tenant_id, name) values (:'tenant_b', 'Kanalizasyon Hat
 insert into public.work_items(tenant_id, site_id, name, unit)
   values (:'tenant_b', :'site_b', 'Boru döşeme', 'm')
   returning id as item_b \gset
-insert into public.work_item_prices(work_item_id, tenant_id, site_id, unit_price) values (:'item_b', :'tenant_b', :'site_b', 400);
+insert into public.work_item_price_history(work_item_id, tenant_id, site_id, valid_from, unit_price) values (:'item_b', :'tenant_b', :'site_b', '2000-01-01', 400);
 reset role;
 
 -- ---------------------------------------------------------------------------
@@ -328,8 +331,8 @@ insert into public.work_items(tenant_id, site_id, name, unit)
   values (:'tenant_a', :'site_a', 'Hafriyat nakliyesi', 'sefer') returning id as item_sefer \gset
 insert into public.work_items(tenant_id, site_id, name, unit)
   values (:'tenant_a', :'site_a', 'Kırma taş', 'ton') returning id as item_ton \gset
-insert into public.work_item_prices(work_item_id, tenant_id, site_id, unit_price) values
-  (:'item_sefer', :'tenant_a', :'site_a', 750), (:'item_ton', :'tenant_a', :'site_a', 40);
+insert into public.work_item_price_history(work_item_id, tenant_id, site_id, valid_from, unit_price) values
+  (:'item_sefer', :'tenant_a', :'site_a', '2000-01-01', 750), (:'item_ton', :'tenant_a', :'site_a', '2000-01-01', 40);
 insert into public.routes(tenant_id, site_id, name, work_item_id) values (:'tenant_a', :'site_a', 'Döküm', :'item_sefer') returning id as route_sefer \gset
 insert into public.routes(tenant_id, site_id, name, work_item_id) values (:'tenant_a', :'site_a', 'Taş ocağı', :'item_ton') returning id as route_ton \gset
 insert into public.trip_entries(tenant_id, site_id, vehicle_id, route_id, entry_date, trip_count) values
@@ -364,8 +367,8 @@ reset role;
 
 -- T20: Fiyatlar yalnızca firma sahibi/yöneticiye açık
 select pg_temp.login('00000000-0000-0000-0000-00000000000a');
-insert into public.route_prices(route_id, tenant_id, site_id, trip_price) values (:'route_sefer', :'tenant_a', :'site_a', 900);
-insert into public.vehicle_rates(vehicle_id, tenant_id, daily_rate) values (:'vehicle_a', :'tenant_a', 9000);
+insert into public.route_price_history(route_id, tenant_id, site_id, valid_from, trip_price) values (:'route_sefer', :'tenant_a', :'site_a', '2000-01-01', 900);
+insert into public.vehicle_rate_history(vehicle_id, tenant_id, valid_from, daily_rate) values (:'vehicle_a', :'tenant_a', '2000-01-01', 9000);
 select pg_temp.check((select count(*) from public.work_item_prices) = 3 and (select count(*) from public.vehicle_rates) = 1, 'T20a Yönetici fiyatları görür');
 reset role;
 select pg_temp.login('00000000-0000-0000-0000-0000000000a2');
@@ -539,5 +542,107 @@ end $$;
 insert into public.routes(tenant_id, site_id, name, work_item_id) values (:'tenant_b', :'site_b', 'Ocak → Döküm 2', :'item_auto');
 reset role;
 select pg_temp.check((select count(*) from public.routes where work_item_id = :'item_auto') = 2, 'T23c Bağlı kaleme ikinci güzergâh eklenebilir');
+
+-- ---------------------------------------------------------------------------
+-- T24: Ücret geçmişi ve dönem kilidi ("bugün" = 05.10.2026)
+--   item_a imalatı: 01.10 120,5 m3 ve 02.10 79,5 m3. Fiyat 85,50 → 02.10'dan itibaren 100.
+--   tutar = 120,5 × 85,50 + 79,5 × 100 = 10 302,75 + 7 950 = 18 252,75; ortalama 91,26
+-- ---------------------------------------------------------------------------
+select pg_temp.login('00000000-0000-0000-0000-00000000000a');
+insert into public.work_item_price_history(work_item_id, tenant_id, site_id, valid_from, unit_price)
+  values (:'item_a', :'tenant_a', :'site_a', '2026-10-02', 100);
+select pg_temp.check(s.amount = 18252.75 and s.unit_price = 91.26,
+  'T24a Fiyat değişikliği yalnızca geçerlilik tarihinden sonrasını etkiler')
+  from public.production_summary(:'site_a', '2026-10-01', '2026-10-02') s where s.work_item_id = :'item_a';
+select pg_temp.check(s.amount = 10302.75 and s.unit_price = 85.50, 'T24b Eski dönem eski fiyatla kalır')
+  from public.production_summary(:'site_a', '2026-10-01', '2026-10-01') s where s.work_item_id = :'item_a';
+select pg_temp.check((select unit_price from public.work_item_prices where work_item_id = :'item_a') = 100,
+  'T24c Güncel fiyat son geçerli fiyattır');
+do $$ begin
+  insert into public.work_item_price_history(work_item_id, tenant_id, site_id, valid_from, unit_price)
+    select work_item_id, tenant_id, site_id, '2026-10-06', 120 from public.work_item_prices limit 1;
+  raise exception 'TEST BAŞARISIZ: T24d ileri tarihli ücret girildi';
+exception when raise_exception then
+  if sqlerrm like 'TEST BAŞARISIZ%' then raise; end if;
+  raise notice 'GEÇTİ: T24d İleri tarihli ücret girilemez';
+end $$;
+
+-- Dönem 02.10'a kadar kilitlenir
+update public.sites set locked_until = '2026-10-02' where id = :'site_a';
+reset role;
+
+select pg_temp.login('00000000-0000-0000-0000-0000000000a4');
+do $$ begin
+  insert into public.production_entries(tenant_id, site_id, work_item_id, entry_date, quantity)
+    select tenant_id, site_id, id, '2026-10-02', 1 from public.work_items where code = '15.150.1001';
+  raise exception 'TEST BAŞARISIZ: T24e kilitli döneme kayıt eklendi';
+exception when raise_exception then
+  if sqlerrm like 'TEST BAŞARISIZ%' then raise; end if;
+  raise notice 'GEÇTİ: T24e Kilitli döneme kayıt eklenemez';
+end $$;
+do $$ begin
+  update public.production_entries set quantity = 1 where entry_date = '2026-10-01';
+  raise exception 'TEST BAŞARISIZ: T24f kilitli dönemde düzeltme yapıldı';
+exception when raise_exception then
+  if sqlerrm like 'TEST BAŞARISIZ%' then raise; end if;
+  raise notice 'GEÇTİ: T24f Kilitli dönemdeki kayıt düzeltilemez';
+end $$;
+do $$ begin
+  delete from public.trip_entries where entry_date = '2026-10-01';
+  raise exception 'TEST BAŞARISIZ: T24g kilitli dönemden kayıt silindi';
+exception when raise_exception then
+  if sqlerrm like 'TEST BAŞARISIZ%' then raise; end if;
+  raise notice 'GEÇTİ: T24g Kilitli dönemden kayıt silinemez';
+end $$;
+do $$ begin
+  insert into public.work_item_price_history(work_item_id, tenant_id, site_id, valid_from, unit_price)
+    select id, tenant_id, site_id, '2026-10-01', 1 from public.work_items where code = '15.150.1001';
+  raise exception 'TEST BAŞARISIZ: T24h kilitli dönemin ücreti değişti';
+exception when raise_exception then
+  if sqlerrm like 'TEST BAŞARISIZ%' then raise; end if;
+  raise notice 'GEÇTİ: T24h Ücret değişikliği kilitli dönemi etkileyemez';
+end $$;
+insert into public.production_entries(tenant_id, site_id, work_item_id, entry_date, quantity)
+  values (:'tenant_a', :'site_a', :'item_a', '2026-10-03', 10);
+do $$ begin
+  update public.sites set locked_until = null where name = 'Çevre Yolu 1. Kısım';
+  raise exception 'TEST BAŞARISIZ: T24j yönetici kilidi açtı';
+exception when raise_exception then
+  if sqlerrm like 'TEST BAŞARISIZ%' then raise; end if;
+  raise notice 'GEÇTİ: T24j Yönetici kilidi açamaz (yalnızca ileri alabilir)';
+end $$;
+do $$ begin
+  update public.sites set locked_until = '2026-10-06' where name = 'Çevre Yolu 1. Kısım';
+  raise exception 'TEST BAŞARISIZ: T24k gelecek tarih kilitlendi';
+exception when raise_exception then
+  if sqlerrm like 'TEST BAŞARISIZ%' then raise; end if;
+  raise notice 'GEÇTİ: T24k Gelecek tarih kilitlenemez';
+end $$;
+reset role;
+select pg_temp.check((select count(*) from public.production_entries where entry_date = '2026-10-03') = 1,
+  'T24i Kilit sonrası tarihe kayıt girilir');
+
+select pg_temp.login('00000000-0000-0000-0000-00000000000a');
+update public.sites set locked_until = null where id = :'site_a';
+reset role;
+select pg_temp.check((select locked_until from public.sites where id = :'site_a') is null, 'T24l Firma sahibi kilidi açar');
+
+-- Saha personeli 7 günden eski kayıt giremez (bugün 05.10 → en eski 28.09)
+select pg_temp.login('00000000-0000-0000-0000-0000000000a2');
+do $$ begin
+  insert into public.trip_entries(tenant_id, site_id, vehicle_id, entry_date, trip_count)
+    select s.tenant_id, s.id, v.id, '2026-09-27', 1
+    from public.sites s join public.vehicles v on v.tenant_id = s.tenant_id
+    where s.name = 'Çevre Yolu 1. Kısım' limit 1;
+  raise exception 'TEST BAŞARISIZ: T24m saha personeli eski tarihe sefer girdi';
+exception when raise_exception then
+  if sqlerrm like 'TEST BAŞARISIZ%' then raise; end if;
+  raise notice 'GEÇTİ: T24m Saha personeli 7 günden eski kayıt giremez';
+end $$;
+insert into public.trip_entries(tenant_id, site_id, vehicle_id, entry_date, trip_count)
+  values (:'tenant_a', :'site_a', :'vehicle_a', '2026-09-28', 1);
+reset role;
+select pg_temp.check((select count(*) from public.trip_entries where entry_date = '2026-09-28') = 1,
+  'T24n Saha personeli 7 gün içindeki tarihe girer');
 
 \echo 'TÜM VERİTABANI TESTLERİ GEÇTİ'

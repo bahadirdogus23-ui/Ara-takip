@@ -203,6 +203,7 @@ export type Database = {
           code: string | null;
           created_at: string;
           day_start_hour: number;
+          locked_until: string | null;
           employer: string | null;
           end_date: string | null;
           id: string;
@@ -215,6 +216,7 @@ export type Database = {
         Insert: {
           code?: string | null;
           day_start_hour?: number;
+          locked_until?: string | null;
           employer?: string | null;
           end_date?: string | null;
           id?: string;
@@ -308,6 +310,66 @@ export type Database = {
           vehicle_type: string;
         };
         Update: Partial<Database["public"]["Tables"]["vehicles"]["Insert"]>;
+        Relationships: Rel[];
+      };
+      work_item_price_history: {
+        Row: {
+          work_item_id: string;
+          tenant_id: string;
+          site_id: string;
+          valid_from: string;
+          unit_price: number | null;
+          created_at: string;
+          created_by: string | null;
+        };
+        Insert: {
+          work_item_id: string;
+          tenant_id: string;
+          site_id: string;
+          valid_from: string;
+          unit_price: number | null;
+        };
+        Update: { unit_price?: number | null };
+        Relationships: Rel[];
+      };
+      route_price_history: {
+        Row: {
+          route_id: string;
+          tenant_id: string;
+          site_id: string;
+          valid_from: string;
+          trip_price: number | null;
+          created_at: string;
+          created_by: string | null;
+        };
+        Insert: {
+          route_id: string;
+          tenant_id: string;
+          site_id: string;
+          valid_from: string;
+          trip_price: number | null;
+        };
+        Update: { trip_price?: number | null };
+        Relationships: Rel[];
+      };
+      vehicle_rate_history: {
+        Row: {
+          vehicle_id: string;
+          tenant_id: string;
+          valid_from: string;
+          hourly_rate: number | null;
+          daily_rate: number | null;
+          created_at: string;
+          created_by: string | null;
+        };
+        Insert: {
+          vehicle_id: string;
+          tenant_id: string;
+          valid_from: string;
+          hourly_rate: number | null;
+          daily_rate: number | null;
+        };
+        Update: { hourly_rate?: number | null; daily_rate?: number | null };
         Relationships: Rel[];
       };
       site_vehicles: {

@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { canManage, getContext } from "@/lib/context";
 import { dbErrorMessage } from "@/lib/errors";
 import { guessVehicleKind } from "@/lib/field-checks";
+import { BEGINNING, saveVehicleRates } from "@/lib/prices";
 import { parseVehicleLines, WORK_ITEM_TEMPLATES } from "@/lib/setup";
 import { SITE_COOKIE } from "@/lib/site-pref";
 import { formValues, type FormState } from "@/lib/validation";
@@ -103,18 +104,15 @@ export async function quickSetup(
           error: `Şantiye açıldı ama araçlar eklenemedi: ${dbErrorMessage(e)}`,
           values,
         };
-      // Günlük kira ayrı tabloda (yalnızca sahibi/yönetici görür)
-      const rates = fresh
-        .filter((v) => v.daily_rate !== null)
-        .map((v) => ({
+      // Günlük kira ücret geçmişine yazılır (yalnızca sahibi/yönetici görür; ilk ücret en baştan geçerli)
+      for (const v of fresh.filter((x) => x.daily_rate !== null)) {
+        const { error: re } = await saveVehicleRates(supabase, {
           vehicle_id: inserted.find((x) => x.plate === v.plate)!.id,
           tenant_id: tenant.id,
+          hourly_rate: null,
           daily_rate: v.daily_rate,
-        }));
-      if (rates.length) {
-        const { error: re } = await supabase
-          .from("vehicle_rates")
-          .insert(rates);
+          valid_from: BEGINNING,
+        });
         if (re)
           return {
             error: `Araçlar eklendi ama kiraları kaydedilemedi: ${dbErrorMessage(re)}`,

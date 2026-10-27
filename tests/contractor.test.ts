@@ -206,3 +206,153 @@ describe("günlük kira", () => {
     expect(kaya.total).toBe(31500);
   });
 });
+
+describe("ücret geçmişi", () => {
+  it("her gün o günkü ücretle hesaplanır; sonraki zam geçmişi değiştirmez", () => {
+    const vehicles = [
+      {
+        id: "k1",
+        plate: "34 HF 001",
+        vehicle_type: "Kamyon",
+        ownership: "rented",
+        contractor_name: "Kaya",
+        hourly_rate: null,
+        daily_rate: 12000, // güncel ücret: hesapta kullanılmaz
+      },
+      {
+        id: "t1",
+        plate: "35 KY 101",
+        vehicle_type: "Kamyon",
+        ownership: "subcontractor",
+        contractor_name: "Kaya",
+        hourly_rate: null,
+      },
+    ];
+    const routes = [
+      {
+        id: "r1",
+        name: "Ocak",
+        trip_price: 900,
+        cycle_minutes: null,
+        distance_km: null,
+      },
+    ];
+    const trip = (vehicle_id: string, entry_date: string, trip_count = 1) => ({
+      vehicle_id,
+      route_id: "r1",
+      entry_date,
+      trip_count,
+    });
+    const history = {
+      vehicle: new Map([
+        [
+          "k1",
+          [
+            {
+              from: "2000-01-01",
+              value: { hourly_rate: null, daily_rate: 9000 },
+            },
+            {
+              from: "2026-10-03",
+              value: { hourly_rate: null, daily_rate: 12000 },
+            },
+          ],
+        ],
+      ]),
+      route: new Map([
+        [
+          "r1",
+          [
+            { from: "2000-01-01", value: 850 },
+            { from: "2026-10-02", value: 900 },
+          ],
+        ],
+      ]),
+    };
+    const r = computeContractorPayments({
+      vehicles,
+      routes,
+      trips: [
+        trip("k1", "2026-10-01", 5),
+        trip("k1", "2026-10-02", 3),
+        trip("k1", "2026-10-03", 4),
+        trip("t1", "2026-10-01", 2),
+        trip("t1", "2026-10-02", 3),
+      ],
+      machineLogs: [],
+      history,
+    });
+    const kaya = r.contractors[0];
+    // 34 HF 001: 2 gün × 9.000 + 1 gün × 12.000 = 30.000
+    // 35 KY 101: 2 sefer × 850 + 3 sefer × 900 = 4.400
+    expect(kaya.lines).toEqual([
+      expect.objectContaining({
+        plate: "34 HF 001",
+        unit: "gün",
+        quantity: 2,
+        unitPrice: 9000,
+        amount: 18000,
+      }),
+      expect.objectContaining({
+        plate: "34 HF 001",
+        unit: "gün",
+        quantity: 1,
+        unitPrice: 12000,
+        amount: 12000,
+      }),
+      expect.objectContaining({
+        plate: "35 KY 101",
+        unit: "sefer",
+        quantity: 2,
+        unitPrice: 850,
+        amount: 1700,
+      }),
+      expect.objectContaining({
+        plate: "35 KY 101",
+        unit: "sefer",
+        quantity: 3,
+        unitPrice: 900,
+        amount: 2700,
+      }),
+    ]);
+    expect(kaya.total).toBe(34400);
+
+    // Aynı dönem, bugün kira 15.000'e çıksa da değişmez (zam 28.10'dan geçerli)
+    history.vehicle.get("k1")!.push({
+      from: "2026-10-28",
+      value: { hourly_rate: null, daily_rate: 15000 },
+    });
+    const again = computeContractorPayments({
+      vehicles,
+      routes,
+      trips: [
+        trip("k1", "2026-10-01", 5),
+        trip("k1", "2026-10-02", 3),
+        trip("k1", "2026-10-03", 4),
+      ],
+      machineLogs: [],
+      history,
+    });
+    expect(again.total).toBe(30000);
+  });
+});
+
+import { validFrom, valueAt } from "@/lib/prices";
+
+describe("geçerli ücret", () => {
+  const list = [
+    { from: "2000-01-01", value: 1 },
+    { from: "2026-10-02", value: 2 },
+  ];
+  it("tarihte geçerli olan değeri bulur", () => {
+    expect(valueAt(list, "1999-12-31")).toBeNull();
+    expect(valueAt(list, "2026-10-01")).toBe(1);
+    expect(valueAt(list, "2026-10-02")).toBe(2);
+    expect(valueAt(undefined, "2026-10-02")).toBeNull();
+  });
+  it("geçerlilik başlangıcı boşsa bugün, ileri tarih reddedilir", () => {
+    expect(validFrom(null, "2026-10-27")).toBe("2026-10-27");
+    expect(validFrom("2026-10-01", "2026-10-27")).toBe("2026-10-01");
+    expect(validFrom("2026-10-28", "2026-10-27")).toBeNull();
+  });
+});

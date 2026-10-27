@@ -4,7 +4,7 @@ import { DeleteButton } from "@/components/form";
 import { StatusBadge } from "@/components/status-badge";
 import { isUuid } from "@/lib/actions";
 import { canManage, getContext } from "@/lib/context";
-import { formatDateTR, formatTL } from "@/lib/format";
+import { formatDateTR, formatTL, isoDateTR } from "@/lib/format";
 import { routeLimit } from "@/lib/field-checks";
 import { formatTrNumber } from "@/lib/number";
 import { loadPrices } from "@/lib/prices";
@@ -12,6 +12,7 @@ import { UNITS } from "@/lib/validation";
 import { SiteForm } from "../site-form";
 import { deleteRoute, deleteWorkItem } from "./actions";
 import { RouteForm, WorkItemForm } from "./definition-forms";
+import { LockForm } from "./lock-form";
 
 const unitLabel = (u: string) => UNITS[u as keyof typeof UNITS] ?? u;
 
@@ -107,6 +108,15 @@ export default async function SitePage({
             <SiteForm site={site} />
           </div>
         </details>
+      )}
+
+      {manager && (
+        <LockForm
+          siteId={site.id}
+          lockedUntil={site.locked_until}
+          owner={tenant.role === "owner"}
+          today={isoDateTR()}
+        />
       )}
 
       <section className="space-y-3">

@@ -187,6 +187,7 @@ export const workItemSchema = z.object({
     .min(2, "İş kalemi adı en az 2 karakter olmalı")
     .max(300, "İş kalemi adı çok uzun"),
   unit: z.enum(Object.keys(UNITS) as [keyof typeof UNITS], "Birim seçin"),
+  price_from: optionalDate.optional().transform((v) => v ?? null),
   unit_price: optionalTrNumber({
     label: "Birim fiyat",
     decimals: 2,
@@ -215,6 +216,7 @@ export const routeSchema = z.object({
     minExclusive: true,
     max: 1440,
   }),
+  price_from: optionalDate.optional().transform((v) => v ?? null),
   trip_price: optionalTrNumber({
     label: "Sefer ücreti",
     decimals: 2,
@@ -283,6 +285,7 @@ export const vehicleSchema = z.object({
   contractor_name: optionalText(200)
     .optional()
     .transform((v) => v ?? null),
+  price_from: optionalDate.optional().transform((v) => v ?? null),
   hourly_rate: optionalTrNumber({
     label: "Saatlik ücret",
     decimals: 2,

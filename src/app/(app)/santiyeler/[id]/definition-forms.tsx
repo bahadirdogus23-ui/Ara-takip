@@ -87,6 +87,16 @@ export function WorkItemForm({
           state={state}
         />
       </div>
+      {item && (
+        <Field
+          idPrefix={p}
+          name="price_from"
+          type="date"
+          label="Fiyat geçerlilik başlangıcı"
+          hint="Ücret değiştiyse hangi günden itibaren geçerli olduğunu seçin; boşsa bugün. Önceki kayıtlar eski ücretle kalır."
+          state={state}
+        />
+      )}
       <SubmitButton>{item ? "Kaydet" : "İş kalemi ekle"}</SubmitButton>
     </form>
   );
@@ -164,6 +174,16 @@ export function RouteForm({
         hint="KDV hariç; taşeron hakedişi bununla hesaplanır"
         state={state}
       />
+      {route && (
+        <Field
+          idPrefix={p}
+          name="price_from"
+          type="date"
+          label="Ücret geçerlilik başlangıcı"
+          hint="Ücret değiştiyse hangi günden itibaren geçerli olduğunu seçin; boşsa bugün. Önceki kayıtlar eski ücretle kalır."
+          state={state}
+        />
+      )}
       <NumberField
         idPrefix={p}
         name="cycle_minutes"

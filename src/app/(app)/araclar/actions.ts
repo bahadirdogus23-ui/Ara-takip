@@ -6,7 +6,8 @@ import { deleteRow, isUuid } from "@/lib/actions";
 import { canManage, getContext } from "@/lib/context";
 import { dbErrorMessage } from "@/lib/errors";
 import { guessVehicleKind } from "@/lib/field-checks";
-import { saveVehicleRates } from "@/lib/prices";
+import { isoDateTR } from "@/lib/format";
+import { saveVehicleRates, validFrom } from "@/lib/prices";
 import {
   formValues,
   toFieldErrors,
@@ -29,7 +30,15 @@ export async function saveVehicle(
 
   const editId = isUuid(values.id) ? values.id : null;
   // Kira ücretleri ayrı tabloda (yalnızca sahibi/yönetici görür)
-  const { hourly_rate, daily_rate, kind, ...vehicle } = parsed.data;
+  const { hourly_rate, daily_rate, price_from, kind, ...vehicle } = parsed.data;
+  const from = validFrom(price_from, isoDateTR());
+  if (!from)
+    return {
+      fieldErrors: {
+        price_from: "Ücretin geçerlilik başlangıcı ileri bir tarih olamaz",
+      },
+      values,
+    };
   const row = {
     ...vehicle,
     kind: kind ?? guessVehicleKind(vehicle.vehicle_type),
@@ -56,6 +65,7 @@ export async function saveVehicle(
     tenant_id: tenant.id,
     hourly_rate,
     daily_rate,
+    valid_from: from,
   });
   if (rates.error) return { error: dbErrorMessage(rates.error), values };
 

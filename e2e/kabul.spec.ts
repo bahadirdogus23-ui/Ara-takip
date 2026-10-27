@@ -1059,6 +1059,68 @@ test("K21: araç ataması, çift sayım ve kantar tonu uyarıları", async ({
   await page.context().close();
 });
 
+test("K22: kira zammı geçmiş hakedişi değiştirmez, kilitli döneme yazılamaz", async ({
+  browser,
+}) => {
+  const page = await newPage(browser);
+  const email = `kilit-${run}@hafriyol.local`;
+  await signUp(page, { email, password: "Kilit-12345" });
+  await createTenant(page, "Kilit Deneme Hafriyat");
+  await page.locator("#site_name").fill("Kilit Yolu");
+  await page.locator("#vehicles").fill("34 KL 001, Kamyon, 20, kiralık 9000");
+  await page.getByRole("button", { name: "Kurulumu bitir" }).click();
+  await page.waitForURL("**/sefer?hazir=1");
+
+  // 10 ve 9 gün önce birer sefer
+  const day = (n: number) =>
+    psql(
+      `select to_char((now() at time zone 'Europe/Istanbul')::date - ${n}, 'YYYY-MM-DD')`,
+    );
+  const [d10, d9, d1, today] = [day(10), day(9), day(1), day(0)];
+  psql(`insert into public.trip_entries(tenant_id, site_id, vehicle_id, entry_date, trip_count, created_by)
+    select v.tenant_id, s.id, v.id, d::date, 1, u.id
+    from public.vehicles v join public.sites s on s.tenant_id = v.tenant_id and s.name = 'Kilit Yolu'
+      join auth.users u on u.email = '${email}',
+      (values ('${d10}'), ('${d9}')) t(d)
+    where v.plate = '34 KL 001'`);
+  const range = `bas=${d10}&bit=${today}`;
+  await page.goto(`/hakedis?${range}`);
+  await expect(page.getByText("Günlük kira · 2 gün × ₺9.000,00")).toBeVisible();
+
+  // Kira bugünden itibaren 12.000: geçmiş dönem 9.000 ile kalır
+  await page.goto("/araclar");
+  const card = page.locator("li", { hasText: "34 KL 001" });
+  await card.getByText("Düzenle").click();
+  await card.locator('input[name="daily_rate"]').fill("12000");
+  await card.getByRole("button", { name: "Kaydet" }).click();
+  await expect(card.getByText("Kaydedildi")).toBeVisible();
+  await page.goto(`/hakedis?${range}`);
+  await expect(page.getByText("Günlük kira · 2 gün × ₺9.000,00")).toBeVisible();
+  await expect(page.getByText("₺18.000,00").first()).toBeVisible();
+
+  // Dönem dünden itibaren kilitlenir; kilitli güne ücret yazılamaz
+  await page.goto("/santiyeler");
+  await page.getByRole("link", { name: /Kilit Yolu/ }).click();
+  await page.locator("#lock-locked_until").fill(d1);
+  await page.getByRole("button", { name: "Kilitle" }).click();
+  await expect(page.getByText("Dönem kilitlendi")).toBeVisible();
+  await expect(page.getByText(/tarihine kadar kilitli/)).toBeVisible();
+
+  await page.goto("/araclar");
+  await card.getByText("Düzenle").click();
+  await card.locator('input[name="daily_rate"]').fill("15000");
+  await card.locator('input[name="price_from"]').fill(d9);
+  await card.getByRole("button", { name: "Kaydet" }).click();
+  await expect(card.getByText(/kilitli dönemi .* etkiler/)).toBeVisible();
+
+  // Firma sahibi kilidi kaldırır
+  await page.goto("/santiyeler");
+  await page.getByRole("link", { name: /Kilit Yolu/ }).click();
+  await page.getByRole("button", { name: "Kilidi kaldır" }).click();
+  await expect(page.getByText("Kilit kaldırıldı")).toBeVisible();
+  await page.context().close();
+});
+
 test("K8: başka firma hiçbir veriyi göremez", async ({ browser }) => {
   const page = await newPage(browser);
   await signUp(page, other);

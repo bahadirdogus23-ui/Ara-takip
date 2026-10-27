@@ -20,6 +20,7 @@ type FieldProps = BaseProps & {
   autoComplete?: string;
   inputMode?: React.HTMLAttributes<HTMLInputElement>["inputMode"];
   placeholder?: string;
+  max?: string; // tarih alanında en geç tarih
 };
 
 function useFieldState({ name, state, defaultValue, idPrefix }: BaseProps) {
@@ -80,6 +81,7 @@ export function Field(props: FieldProps) {
     hint,
     inputMode,
     placeholder,
+    max,
   } = props;
   const { id, error, value } = useFieldState(props);
   return (
@@ -94,6 +96,7 @@ export function Field(props: FieldProps) {
         autoComplete={autoComplete}
         inputMode={inputMode}
         placeholder={placeholder}
+        max={max}
         aria-invalid={!!error}
         aria-describedby={error ? `${id}-error` : undefined}
         className="input"

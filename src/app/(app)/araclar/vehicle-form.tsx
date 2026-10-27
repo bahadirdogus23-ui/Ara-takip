@@ -123,6 +123,16 @@ export function VehicleForm({
         hint="Günlük kiralanan araçlar için, KDV hariç. Aracın sefer ya da makine kaydı olan her gün sayılır; girilirse sefer ve saat ücreti ayrıca ödenmez."
         state={state}
       />
+      {vehicle && (
+        <Field
+          idPrefix={p}
+          name="price_from"
+          type="date"
+          label="Kira geçerlilik başlangıcı"
+          hint="Ücret değiştiyse hangi günden itibaren geçerli olduğunu seçin; boşsa bugün. Önceki kayıtlar eski ücretle kalır."
+          state={state}
+        />
+      )}
       <NumberField
         idPrefix={p}
         name="fuel_norm_lph"

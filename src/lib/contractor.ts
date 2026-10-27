@@ -2,7 +2,13 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/lib/database.types";
 import { routeLimit } from "@/lib/field-checks";
 import { toKurus, toTL } from "@/lib/money";
-import { loadPrices } from "@/lib/prices";
+import {
+  loadPrices,
+  loadPriceHistory,
+  valueAt,
+  type PriceHistory,
+  type VehicleRate,
+} from "@/lib/prices";
 import { loadMachineDays, loadTripDays } from "@/lib/summaries";
 
 // Taşeron / kiralık araç hakedişi: dönemdeki seferler × güzergâh sefer ücreti,
@@ -60,13 +66,38 @@ export type ContractorPay = {
   }[];
 };
 
+// Tarihi bilinmeyen makine kaydı (eski çağrılar) en son ücretle hesaplanır
+const LATEST = "9999-12-31";
+
 export function computeContractorPayments(input: {
   vehicles: PayVehicle[];
   routes: PayRoute[];
   trips: PayTrip[];
   machineLogs: PayMachineLog[];
+  // Ücret geçmişi verilirse her gün o günkü ücret kullanılır; verilmezse araç ve
+  // güzergâhtaki tek ücret (testler ve eski çağrılar)
+  history?: PriceHistory;
 }): { contractors: ContractorPay[]; total: number } {
   const routeById = new Map(input.routes.map((r) => [r.id, r]));
+  const h = input.history;
+  const routePrice = (routeId: string, date: string): number | null => {
+    if (h) return valueAt(h.route.get(routeId), date);
+    const p = routeById.get(routeId)?.trip_price;
+    return p === null || p === undefined ? null : Number(p);
+  };
+  const vehicleRate = (v: PayVehicle, date: string): VehicleRate =>
+    h
+      ? (valueAt(h.vehicle.get(v.id), date) ?? {
+          hourly_rate: null,
+          daily_rate: null,
+        })
+      : {
+          hourly_rate: v.hourly_rate === null ? null : Number(v.hourly_rate),
+          daily_rate:
+            v.daily_rate === null || v.daily_rate === undefined
+              ? null
+              : Number(v.daily_rate),
+        };
   const payable = input.vehicles.filter((v) => v.ownership !== "own");
   const groups = new Map<string, ContractorPay & { totalK: number }>();
 
@@ -91,24 +122,51 @@ export function computeContractorPayments(input: {
   for (const v of payable) {
     const trips = input.trips.filter((t) => t.vehicle_id === v.id);
     const logs = input.machineLogs.filter((l) => l.vehicle_id === v.id);
-    const hours = logs.reduce((s, l) => s + Number(l.hours ?? 0), 0);
     if (!trips.length && !logs.length) continue;
     const g = group(v);
 
-    // Güzergâh başına sefer satırı (günlük kiralık araçta sefer ücreti ödenmez, sefer sayısı bilgi amaçlı)
-    const byRoute = new Map<string, number>();
-    for (const t of trips)
-      byRoute.set(
-        t.route_id ?? "",
-        (byRoute.get(t.route_id ?? "") ?? 0) + t.trip_count,
-      );
-    for (const [routeId, qty] of byRoute) {
-      if (v.daily_rate !== null && v.daily_rate !== undefined) break;
+    // Her gün o günkü ücretle hesaplanır (ücret geçmişi). Günlük kirası olan günde sefer ve
+    // saat ücreti ayrıca ödenmez; aracın sefer ya da makine kaydı olan her gün bir gün sayılır.
+    const routeTrips = new Map<
+      string,
+      { route: string; price: number | null; qty: number }
+    >();
+    const dailyDays = new Map<number, Set<string>>();
+    const hourly = new Map<string, { rate: number | null; hours: number }>();
+    for (const t of trips) {
+      const rate = vehicleRate(v, t.entry_date);
+      if (rate.daily_rate !== null) {
+        dailyDays.set(
+          rate.daily_rate,
+          (dailyDays.get(rate.daily_rate) ?? new Set()).add(t.entry_date),
+        );
+        continue;
+      }
+      const routeId = t.route_id ?? "";
+      const price = routePrice(routeId, t.entry_date);
+      const key = `${routeId}|${price}`;
+      const line = routeTrips.get(key) ?? { route: routeId, price, qty: 0 };
+      line.qty += t.trip_count;
+      routeTrips.set(key, line);
+    }
+    for (const l of logs) {
+      const rate = vehicleRate(v, l.log_date ?? LATEST);
+      if (rate.daily_rate !== null) {
+        if (l.log_date)
+          dailyDays.set(
+            rate.daily_rate,
+            (dailyDays.get(rate.daily_rate) ?? new Set()).add(l.log_date),
+          );
+        continue;
+      }
+      const key = String(rate.hourly_rate);
+      const h = hourly.get(key) ?? { rate: rate.hourly_rate, hours: 0 };
+      h.hours += Number(l.hours ?? 0);
+      hourly.set(key, h);
+    }
+
+    for (const { route: routeId, price, qty } of routeTrips.values()) {
       const route = routeById.get(routeId);
-      const price =
-        route?.trip_price === null || route?.trip_price === undefined
-          ? null
-          : Number(route.trip_price);
       const amountK = price === null ? 0 : qty * toKurus(price);
       if (price === null) g.missingPrice = true;
       g.lines.push({
@@ -122,33 +180,21 @@ export function computeContractorPayments(input: {
       g.totalK += amountK;
     }
 
-    // Günlük kira: aracın sefer ya da makine kaydı olan her gün bir gün sayılır.
-    // Günlük kira girilmişse saatlik/sefer ücreti yerine bu kullanılır (ikisi birden ödenmez).
-    const dailyRate =
-      v.daily_rate === null || v.daily_rate === undefined
-        ? null
-        : Number(v.daily_rate);
-    if (dailyRate !== null) {
-      const days = new Set([
-        ...trips.map((t) => t.entry_date),
-        ...input.machineLogs
-          .filter((l) => l.vehicle_id === v.id && l.log_date)
-          .map((l) => l.log_date!),
-      ]).size;
-      const amountK = days * toKurus(dailyRate);
+    for (const [dailyRate, days] of dailyDays) {
+      const amountK = days.size * toKurus(dailyRate);
       g.lines.push({
         plate: v.plate,
         description: "Günlük kira",
         unit: "gün",
-        quantity: days,
+        quantity: days.size,
         unitPrice: dailyRate,
         amount: toTL(amountK),
       });
       g.totalK += amountK;
     }
 
-    if (hours && dailyRate === null) {
-      const rate = v.hourly_rate === null ? null : Number(v.hourly_rate);
+    for (const { rate, hours } of hourly.values()) {
+      if (!hours) continue;
       // saat 2 ondalıklı: kuruş × saat, sonra kuruşa yuvarla
       const amountK = rate === null ? 0 : Math.round(toKurus(rate) * hours);
       if (rate === null) g.missingPrice = true;
@@ -211,7 +257,7 @@ export async function loadContractorPayments(
   to: string,
 ) {
   const filter = { tenantId, siteId, from, to };
-  const [v, r, prices, tripDays, machineDays] = await Promise.all([
+  const [v, r, prices, history, tripDays, machineDays] = await Promise.all([
     supabase
       .from("vehicles")
       .select("id, plate, vehicle_type, ownership, contractor_name")
@@ -221,6 +267,7 @@ export async function loadContractorPayments(
       .select("id, name, cycle_minutes, distance_km")
       .eq("tenant_id", tenantId),
     loadPrices(supabase, tenantId),
+    loadPriceHistory(supabase, tenantId),
     loadTripDays(supabase, filter),
     loadMachineDays(supabase, filter),
   ]);
@@ -246,5 +293,6 @@ export async function loadContractorPayments(
       hours: m.hours,
       log_date: m.log_date,
     })),
+    history,
   });
 }

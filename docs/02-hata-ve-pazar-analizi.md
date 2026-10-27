@@ -103,7 +103,7 @@ Amacın: aşağıdaki hataları **önce yeniden üretip testle kanıtlamak**, so
 | H01 | P0 | Canlıda "PDF indir" çalışmıyor | Doğrulandı | ✔ `b635737` |
 | H02 | P0 | 1000 satır sınırı: rapor, hakediş ve otomatik kira eksik çıkıyor | Doğrulandı | ✔ `89644fa` |
 | H03 | P0 | İnternetsiz girilen seferler kayboluyor | Doğrulandı | ✔ `1277bce` |
-| H04 | P1 | Ücret değişikliği geçmiş dönemi değiştiriyor | Doğrulandı | — |
+| H04 | P1 | Ücret değişikliği geçmiş dönemi değiştiriyor | Doğrulandı | ✔ F1-4 (ücret geçmişi + dönem kilidi) |
 | H05 | P1 | Saha personeli birim fiyat ve kira ücretlerini görüyor | Doğrulandı | ✔ `d5f9854` |
 | H06 | P1 | Kayıtlar ve Giderler toplamları ilk 500 satırdan | Doğrulandı | ✔ `89644fa` |
 | H07 | P1 | "Şifremi unuttum" yok; Auth ayarları eksik | Kodda görüldü | ✔ `75bf9d2` |
@@ -118,7 +118,7 @@ Amacın: aşağıdaki hataları **önce yeniden üretip testle kanıtlamak**, so
 | H16 | P2 | Çift dokunuş ve iki puantörün aynı kamyonu sayması engellenmiyor | Kodda görüldü | ✔ F1-8 (çift sayım uyarısı) |
 | H17 | P2 | "Ton" birimli kalemde tonu girilmemiş seferler gelire girmiyor | Kodda görüldü | ✔ F1-9 (rapor uyarısı) |
 | H18 | P2 | Hızlı kurulum tek işlem (transaction) değil | Kodda görüldü | — |
-| H19 | P2 | İş kuralları yalnız uygulamada; veritabanında yok, dönem kilidi yok | Kodda görüldü | — |
+| H19 | P2 | İş kuralları yalnız uygulamada; veritabanında yok, dönem kilidi yok | Kodda görüldü | ✔ F1-4 (kilit + 7 gün kuralı veritabanında) |
 | H20 | P2 | Makine/kamyon ayrımı serbest metinden tahmin ediliyor | Kodda görüldü | ✔ `091efcf` |
 | H21 | P2 | Service worker önbelleği: yanlış şantiye, paylaşılan telefon, eski veri uyarısı yok | Kodda görüldü | — |
 | H22 | P2 | Fotoğraflar internetsiz kuyruğa alınmıyor; sefere bağlanamıyor | Kodda görüldü | — |
