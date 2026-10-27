@@ -411,10 +411,30 @@ test("K10: makine/mazot, şişirilmiş sefer uyarısı ve WhatsApp özeti", asyn
   await page.goto("/sefer");
   await page.getByRole("button", { name: "Ocak → Km 2" }).click();
   const plus = page.getByRole("button", { name: "35 KY 102 +1 sefer" });
+  const card = page.locator("li", { hasText: "35 KY 102" });
+  // Kartta aracın bugünkü tüm seferleri görünür (önceki testlerden de olabilir)
+  const base = Number(
+    (await card.getByLabel(/^\d+ sefer$/).getAttribute("aria-label"))!.split(
+      " ",
+    )[0],
+  );
   for (let i = 1; i <= 12; i++) {
     await plus.click();
-    await expect(page.getByLabel(`${i} sefer`).first()).toBeVisible();
+    await expect(
+      card.getByLabel(`${base + i} sefer`, { exact: true }),
+    ).toBeVisible();
   }
+  // Ekrandaki sayı hemen artar; uyarı sunucudaki kayıtlardan hesaplanır: 12 kaydın yazılması beklenir
+  await expect
+    .poll(
+      () =>
+        Number(
+          psql(`select coalesce(sum(te.trip_count), 0) from public.trip_entries te join public.vehicles v on v.id = te.vehicle_id
+            join public.routes r on r.id = te.route_id where v.plate = '35 KY 102' and r.name = 'Ocak → Km 2'`),
+        ),
+      { timeout: 15_000 },
+    )
+    .toBe(12);
   await page.reload();
   await expect(
     page.getByText(/Fazla sefer şüphesi · Ocak → Km 2: 12 sefer, en fazla 11/),
