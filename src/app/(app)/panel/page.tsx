@@ -14,7 +14,7 @@ import { PhotoGrid } from "@/components/photo-grid";
 import { PhotoUploader } from "@/components/photo-uploader";
 import { ShareSummary } from "@/components/share-summary";
 import { SitePicker } from "@/components/site-picker";
-import { canManage, getContext } from "@/lib/context";
+import { canManage, getContext, ROLE_LABELS } from "@/lib/context";
 import { buildDailySummary } from "@/lib/daily-summary";
 import { fuelCheck, suspiciousTrips } from "@/lib/field-checks";
 import { formatTL, isoDateTR, monthRangeTR } from "@/lib/format";
@@ -53,9 +53,14 @@ const longDate = () =>
 export default async function TodayPage({
   searchParams,
 }: {
-  searchParams: Promise<{ santiye?: string; hazir?: string; sifre?: string }>;
+  searchParams: Promise<{
+    santiye?: string;
+    hazir?: string;
+    sifre?: string;
+    katildi?: string;
+  }>;
 }) {
-  const { santiye, hazir, sifre } = await searchParams;
+  const { santiye, hazir, sifre, katildi } = await searchParams;
   const { supabase, user, tenant } = await getContext();
   const manager = canManage(tenant.role);
 
@@ -66,9 +71,14 @@ export default async function TodayPage({
     .eq("status", "active")
     .order("name");
   const site = await pickSite(sites ?? [], santiye);
-  const passwordNotice = sifre && (
-    <p role="status" className="rounded-xl bg-green-50 p-3 text-sm text-green-800 dark:bg-green-950 dark:text-green-300">
-      Şifreniz değiştirildi.
+  const passwordNotice = (sifre || katildi) && (
+    <p
+      role="status"
+      className="rounded-xl bg-green-50 p-3 text-sm text-green-800 dark:bg-green-950 dark:text-green-300"
+    >
+      {sifre
+        ? "Şifreniz değiştirildi."
+        : `${tenant.name} firmasına ${ROLE_LABELS[tenant.role].toLocaleLowerCase("tr-TR")} olarak katıldınız.`}
     </p>
   );
 
@@ -80,6 +90,11 @@ export default async function TodayPage({
         <div className="card text-center">
           <Rocket className="mx-auto size-10 text-brand" aria-hidden />
           <h2 className="mt-2 text-lg font-bold">Bir dakikada başlayın</h2>
+          {tenant.role === "owner" && (
+            <p className="mt-1 text-sm font-medium text-green-700 dark:text-green-400">
+              Firmanız aktif, firma sahibi olarak buradasınız.
+            </p>
+          )}
           <p className="mt-1 text-sm text-muted">
             Şantiyenizi, yapacağınız işleri ve kamyonlarınızı tek ekrandan
             ekleyin; hemen sefer saymaya başlayın.

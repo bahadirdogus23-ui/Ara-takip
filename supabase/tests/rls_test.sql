@@ -384,4 +384,78 @@ select pg_temp.login('00000000-0000-0000-0000-00000000000b');
 select pg_temp.check((select count(*) from public.work_item_prices where tenant_id = :'tenant_a') + (select count(*) from public.route_prices) + (select count(*) from public.vehicle_rates) = 0, 'T20g Başka firma fiyatları göremez');
 reset role;
 
+-- T21: Abonelik ve davet kodu
+insert into auth.users(id, email) values
+  ('00000000-0000-0000-0000-0000000000ad', 'hafriyol@test'),
+  ('00000000-0000-0000-0000-0000000000a4', 'muhendis-a@test'),
+  ('00000000-0000-0000-0000-0000000000c1', 'yeni-1@test'),
+  ('00000000-0000-0000-0000-0000000000c2', 'yeni-2@test');
+insert into private.platform_admins(user_id) values ('00000000-0000-0000-0000-0000000000ad');
+
+select pg_temp.check((select plan_status from public.tenants where id = :'tenant_a') = 'pending', 'T21a Yeni firma ödeme bekliyor açılır');
+select pg_temp.login('00000000-0000-0000-0000-00000000000a');
+select public.create_invite(:'tenant_a', 'manager', 'Mühendis', 7, 1) as code_mgr \gset
+\set ON_ERROR_STOP off
+update public.tenants set plan_status = 'active' where id = :'tenant_a';
+\set ON_ERROR_STOP on
+reset role;
+select pg_temp.check((select plan_status from public.tenants where id = :'tenant_a') = 'pending', 'T21b Firma sahibi aboneliği kendisi açamaz');
+
+select pg_temp.login('00000000-0000-0000-0000-0000000000a4');
+do $$ begin
+  perform public.join_with_code((select code from public.invite_codes limit 1));
+  raise exception 'TEST BAŞARISIZ: T21c aktif olmayan firmaya katılındı';
+exception when raise_exception then
+  if sqlerrm like 'TEST BAŞARISIZ%' then raise; end if;
+  raise notice 'GEÇTİ: T21c Aboneliği aktif olmayan firmaya kodla katılınamaz';
+end $$;
+reset role;
+
+select pg_temp.login('00000000-0000-0000-0000-00000000000a');
+select pg_temp.check((select count(*) from public.admin_tenants()) = 0, 'T21d Platform yöneticisi olmayan firma listesini göremez');
+reset role;
+select pg_temp.login('00000000-0000-0000-0000-0000000000ad');
+select pg_temp.check((select count(*) from public.admin_tenants()) >= 2, 'T21e Platform yöneticisi firmaları görür');
+select public.admin_set_plan(:'tenant_a', 'active', null);
+reset role;
+select pg_temp.check((select plan_status from public.tenants where id = :'tenant_a') = 'active', 'T21f Platform yöneticisi firmayı aktif eder');
+
+-- Mühendis kodla katılır (kod küçük harf ve tireyle yazılsa da kabul)
+select pg_temp.login('00000000-0000-0000-0000-0000000000a4');
+select public.join_with_code(lower(substr(:'code_mgr', 1, 4) || '-' || substr(:'code_mgr', 5)));
+reset role;
+select pg_temp.check((select role from public.memberships where user_id = '00000000-0000-0000-0000-0000000000a4') = 'manager', 'T21g Davet koduyla verilen rolle katılınır');
+
+select pg_temp.login('00000000-0000-0000-0000-0000000000a4');
+do $$ begin
+  perform public.create_invite((select tenant_id from public.memberships where user_id = (select auth.uid()) limit 1), 'owner', '', 7, 1);
+  raise exception 'TEST BAŞARISIZ: T21h yönetici sahip kodu üretti';
+exception when insufficient_privilege then
+  raise notice 'GEÇTİ: T21h Yönetici yalnızca saha personeli kodu üretebilir';
+end $$;
+select public.create_invite(:'tenant_a', 'field', 'Şoförler', 30, 1) as code_field \gset
+reset role;
+
+select pg_temp.login('00000000-0000-0000-0000-0000000000c1');
+select public.join_with_code(:'code_field');
+reset role;
+select pg_temp.login('00000000-0000-0000-0000-0000000000c2');
+\set ON_ERROR_STOP off
+select public.join_with_code(:'code_field');
+\set ON_ERROR_STOP on
+reset role;
+select pg_temp.check((select count(*) from public.memberships where user_id = '00000000-0000-0000-0000-0000000000c2') = 0
+  and (select role from public.memberships where user_id = '00000000-0000-0000-0000-0000000000c1') = 'field', 'T21i Tek kullanımlık kod ikinci kişide geçersiz');
+
+select pg_temp.login('00000000-0000-0000-0000-0000000000a2');
+select pg_temp.check((select count(*) from public.invite_codes) = 0, 'T21j Saha personeli davet kodlarını göremez');
+reset role;
+
+select pg_temp.login('00000000-0000-0000-0000-0000000000a4');
+delete from public.memberships where user_id = '00000000-0000-0000-0000-0000000000c1';
+delete from public.memberships where user_id = '00000000-0000-0000-0000-00000000000a';
+reset role;
+select pg_temp.check(not exists (select 1 from public.memberships where user_id = '00000000-0000-0000-0000-0000000000c1')
+  and exists (select 1 from public.memberships where user_id = '00000000-0000-0000-0000-00000000000a'), 'T21k Yönetici saha personelini çıkarır, sahibi çıkaramaz');
+
 \echo 'TÜM VERİTABANI TESTLERİ GEÇTİ'

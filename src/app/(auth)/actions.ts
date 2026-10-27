@@ -52,7 +52,7 @@ export async function signUp(
 
   // E-posta doğrulaması açıksa oturum hemen açılmaz
   if (!data.session) redirect("/giris?dogrula=1");
-  redirect("/firma-olustur");
+  redirect("/basla");
 }
 
 export async function signOut() {

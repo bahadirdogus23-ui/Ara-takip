@@ -16,7 +16,7 @@ async function signUp(page: Page, user: { email: string; password: string }) {
   await page.locator("#email").fill(user.email);
   await page.locator("#password").fill(user.password);
   await page.getByRole("button", { name: "Kayıt ol" }).click();
-  await page.waitForURL("**/firma-olustur");
+  await page.waitForURL("**/basla");
 }
 
 async function signIn(page: Page, user: { email: string; password: string }) {
@@ -24,12 +24,34 @@ async function signIn(page: Page, user: { email: string; password: string }) {
   await page.locator("#email").fill(user.email);
   await page.locator("#password").fill(user.password);
   await page.getByRole("button", { name: "Giriş yap" }).click();
-  await page.waitForURL(/\/(panel|firma-olustur)/);
+  await page.waitForURL(/\/(panel|basla|odeme)/);
 }
 
-async function createTenant(page: Page, name: string) {
+const psql = (sql: string) =>
+  execSync(
+    "psql -h 127.0.0.1 -p 54339 -U postgres -d postgres -At -v ON_ERROR_STOP=1",
+    { input: sql },
+  )
+    .toString()
+    .trim();
+
+// Hafriyol yönetiminin ödemeyi onaylaması (yönetim ekranı K1'de ayrıca denenir)
+function activateTenant(name: string) {
+  psql(`set hafriyol.plan_admin = 'on';
+    update public.tenants set plan_status = 'active', activated_at = now()
+    where id = (select id from public.tenants where name = '${name}' order by created_at desc limit 1);`);
+}
+
+// Yeni firma kur → ödeme ekranı → (onay) → hızlı kurulum
+async function createTenant(page: Page, name: string, activate = true) {
+  await page.goto("/basla");
+  await page.getByRole("link", { name: "Yeni firma kur" }).click();
   await page.locator("#name").fill(name);
   await page.getByRole("button", { name: "Firmayı oluştur" }).click();
+  await page.waitForURL("**/odeme");
+  if (!activate) return;
+  activateTenant(name);
+  await page.goto("/kurulum");
   await page.waitForURL("**/kurulum");
 }
 
@@ -60,11 +82,48 @@ async function newPage(browser: Browser) {
   return context.newPage();
 }
 
-test("K1: kayıt olur, firma oluşturur, hızlı kuruluma düşer", async ({
+test("K1: kayıt olur, firma kurar, ödeme onaylanınca firma sahibi olarak başlar", async ({
   page,
+  browser,
 }) => {
   await signUp(page, owner);
-  await createTenant(page, "Test Hafriyat Ltd. Şti.");
+  await createTenant(page, "Test Hafriyat Ltd. Şti.", false);
+  // Ödeme beklenirken uygulama açılmaz; sahip ödeme bildirimini yapar
+  await expect(
+    page.getByRole("heading", { name: "Aboneliği başlatın" }),
+  ).toBeVisible();
+  await page.goto("/panel");
+  await page.waitForURL("**/odeme");
+  await page.locator("#note").fill("27.10 EFT");
+  await page.getByRole("button", { name: "Ödemeyi yaptım" }).click();
+  await expect(page.getByText("Bildiriminiz alındı")).toBeVisible();
+  await shot(page, "odeme");
+
+  // Hafriyol yönetimi ödemeyi görür ve firmayı aktif eder
+  const admin = await newPage(browser);
+  const adminUser = {
+    email: `yonetim-${run}@hafriyol.local`,
+    password: "Sifre-12345",
+  };
+  await signUp(admin, adminUser);
+  psql(
+    `insert into private.platform_admins(user_id) select id from auth.users where email = '${adminUser.email}'`,
+  );
+  await admin.goto("/yonetim");
+  const row = admin.locator("li", { hasText: "Test Hafriyat Ltd. Şti." });
+  await expect(row.getByText("Ödeme bekliyor")).toBeVisible();
+  await expect(row.getByText("27.10 EFT")).toBeVisible();
+  await row.getByRole("button", { name: "1 yıl aktif et" }).click();
+  await expect(row.getByText(/^Aktif · /)).toBeVisible();
+  await shot(admin, "yonetim");
+  await admin.context().close();
+
+  // Sahip artık uygulamada, firma sahibi olarak
+  await page.goto("/panel");
+  await expect(
+    page.getByText("Firmanız aktif, firma sahibi olarak buradasınız."),
+  ).toBeVisible();
+  await page.goto("/kurulum");
   await expect(page.getByText("Test Hafriyat Ltd. Şti.")).toBeVisible();
   await expect(
     page.getByRole("heading", { name: "Hızlı kurulum" }),
@@ -217,11 +276,25 @@ test("K6: saha personeli giderleri ve raporu göremez", async ({
   await signUp(fieldPage, field);
 
   await signIn(page, owner);
+  // Davet kodu: patron saha personeli kodu üretir, çalışan kayıttan sonra kodu girer
   await page.goto("/kullanicilar");
-  await page.locator("#mb-email").fill(field.email.toUpperCase());
-  await page.locator("#mb-role").selectOption("field");
-  await page.getByRole("button", { name: "Kullanıcı ekle" }).click();
-  await expect(page.getByText(`${field.email} eklendi`)).toBeVisible();
+  await page.locator("#iv-role").selectOption("field");
+  await page.locator("#iv-label").fill("Puantör");
+  await page.getByRole("button", { name: "Davet kodu oluştur" }).click();
+  const code = (await page.locator("p.font-mono").innerText()).trim();
+  expect(code).toMatch(/^[A-Z2-9]{4}-[A-Z2-9]{4}$/);
+  await shot(page, "davet-kodu");
+  await fieldPage.goto("/basla");
+  await fieldPage.locator("#code").fill(code.toLowerCase());
+  await fieldPage.getByRole("button", { name: "Firmaya katıl" }).click();
+  await fieldPage.waitForURL("**/panel?katildi=1");
+  await expect(
+    fieldPage.getByText("saha personeli olarak katıldınız"),
+  ).toBeVisible();
+  // Tek kullanımlık kod ikinci kez kullanılamaz; listede görünmez
+  await page.reload();
+  await expect(page.getByText(code)).toHaveCount(0);
+  await expect(page.locator("li", { hasText: field.email })).toBeVisible();
 
   await page.goto("/panel");
   await shot(page, "panel");

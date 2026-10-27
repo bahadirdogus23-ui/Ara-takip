@@ -21,9 +21,9 @@ export default async function CreateTenantPage() {
           {count ? "Yeni firma ekle" : "Firmanızı oluşturun"}
         </h1>
         <p className="mb-5 mt-1 text-sm text-muted">
-          Şantiyeler, araçlar ve kayıtlar bu firmaya bağlı tutulur. Firmanızın
-          sahibi siz olursunuz; çalışma arkadaşlarınızı sonra davet
-          edebilirsiniz.
+          Şantiyeler, araçlar ve kayıtlar bu firmaya bağlı tutulur. Sonraki
+          adımda abonelik ödemesini yaparsınız; ödeme onaylanınca firma sahibi
+          olarak başlar, çalışanlarınıza davet kodu verirsiniz.
         </p>
         <TenantForm />
       </div>

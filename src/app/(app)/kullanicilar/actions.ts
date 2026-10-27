@@ -3,35 +3,59 @@
 import { randomUUID } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { isUuid } from "@/lib/actions";
-import { getContext } from "@/lib/context";
+import { canManage, getContext } from "@/lib/context";
 import { dbErrorMessage } from "@/lib/errors";
 import {
   formValues,
+  inviteSchema,
   memberSchema,
   toFieldErrors,
   type FormState,
 } from "@/lib/validation";
 
-export async function addMember(
+// Davet kodu: sahip her rol, yönetici yalnızca saha personeli (veritabanı da denetler)
+export async function createInvite(
   _prev: FormState,
   formData: FormData,
 ): Promise<FormState> {
   const values = formValues(formData);
-  const parsed = memberSchema.safeParse(values);
+  const parsed = inviteSchema.safeParse(values);
   if (!parsed.success)
     return { fieldErrors: toFieldErrors(parsed.error), values };
 
   const { supabase, tenant } = await getContext();
-  // Yetki (yalnızca firma sahibi) veritabanı fonksiyonunda kontrol edilir
-  const { error } = await supabase.rpc("add_member", {
+  if (!canManage(tenant.role))
+    return { error: "Davet kodu oluşturma yetkiniz yok" };
+  const { data: code, error } = await supabase.rpc("create_invite", {
     p_tenant: tenant.id,
-    p_email: parsed.data.email,
     p_role: parsed.data.role,
+    p_label: parsed.data.label,
+    p_days: parsed.data.days,
+    p_max_uses: parsed.data.max_uses,
   });
   if (error) return { error: dbErrorMessage(error), values };
 
   revalidatePath("/kullanicilar");
-  return { ok: randomUUID(), message: `${parsed.data.email} eklendi` };
+  return { ok: code, message: code, values: { role: parsed.data.role } };
+}
+
+export async function revokeInvite(
+  _prev: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  const code = String(formData.get("id") ?? "");
+  if (!/^[A-Z2-9]{8}$/.test(code)) return { error: "Geçersiz kod" };
+  const { supabase, tenant } = await getContext();
+  const { data, error } = await supabase
+    .from("invite_codes")
+    .update({ revoked: true })
+    .eq("code", code)
+    .eq("tenant_id", tenant.id)
+    .select("code");
+  if (error) return { error: dbErrorMessage(error) };
+  if (!data?.length) return { error: "Bu kodu iptal etme yetkiniz yok" };
+  revalidatePath("/kullanicilar");
+  return { ok: code, message: "Kod iptal edildi" };
 }
 
 export async function changeRole(
@@ -51,12 +75,14 @@ export async function changeRole(
     .eq("user_id", values.user_id)
     .select("user_id");
   if (error) return { error: dbErrorMessage(error) };
-  if (!data?.length) return { error: "Bu işlem için yetkiniz yok" };
+  if (!data?.length)
+    return { error: "Rolü yalnızca firma sahibi değiştirebilir" };
 
   revalidatePath("/kullanicilar");
   return { ok: randomUUID(), message: "Rol güncellendi" };
 }
 
+// Sahip herkesi, yönetici yalnızca saha personelini çıkarabilir (RLS)
 export async function removeMember(
   _prev: FormState,
   formData: FormData,
@@ -72,7 +98,7 @@ export async function removeMember(
     .eq("user_id", id)
     .select("user_id");
   if (error) return { error: dbErrorMessage(error) };
-  if (!data?.length) return { error: "Bu işlem için yetkiniz yok" };
+  if (!data?.length) return { error: "Bu kişiyi çıkarma yetkiniz yok" };
 
   revalidatePath("/kullanicilar");
   return { ok: randomUUID(), message: "Çıkarıldı" };

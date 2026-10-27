@@ -28,6 +28,6 @@ export async function createTenant(
   if (error) return { error: dbErrorMessage(error), values };
 
   await setActiveTenantCookie(tenantId);
-  // Yeni firma: önce bir dakikalık kurulum
-  redirect("/kurulum");
+  // Yeni firma ödeme bekler: ödeme ekranı; Hafriyol onaylayınca firma sahibi olarak başlar
+  redirect("/odeme");
 }

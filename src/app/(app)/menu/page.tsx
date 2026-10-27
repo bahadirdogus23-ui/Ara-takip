@@ -16,7 +16,7 @@ export default async function MenuPage() {
         owner={tenant.role === "owner"}
       />
       <Link
-        href="/firma-olustur"
+        href="/basla"
         className="card flex items-center justify-between py-4 text-sm font-medium"
       >
         Başka bir firma ekle

@@ -56,6 +56,15 @@ Supabase → Authentication → URL Configuration:
 
 Bu yapılmazsa e-posta doğrulama ve şifre yenileme bağlantıları uygulamaya dönmez.
 
+### Abonelik ve davet kodu
+
+- Yeni firma "ödeme bekliyor" açılır; sahip ödeme ekranından bildirim yapar. Hafriyol yöneticisi
+  `/yonetim` ekranından firmayı aktif eder (1 ay / 1 yıl / süresiz) veya askıya alır.
+- Ödeme ekranındaki bilgiler Vercel ortam değişkenlerinden gelir: `HAFRIYOL_ODEME_TUTAR`,
+  `HAFRIYOL_ODEME_IBAN`, `HAFRIYOL_ODEME_ALICI`, `HAFRIYOL_ILETISIM`.
+- Çalışanlar kayıt olup "Davet kodum var" ile katılır. Firma sahibi her rol için, yönetici
+  (mühendis) yalnızca saha personeli için kod üretir (Kullanıcılar ekranı).
+
 Her gönderimde GitHub Actions lint, tip kontrolü, birim, veritabanı ve kabul testlerini çalıştırır (`.github/workflows/ci.yml`).
 
 ## Klasörler

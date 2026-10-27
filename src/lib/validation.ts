@@ -378,6 +378,29 @@ export const expenseSchema = z.object({
   client_request_id: uuid("Form süresi doldu, sayfayı yenileyin"),
 });
 
+// Davet kodu: büyük/küçük harf, tire ve boşluk fark etmez ("k7mq 2xpa" → "K7MQ2XPA")
+export const inviteCodeSchema = z.object({
+  code: z
+    .string()
+    .transform((v) => v.toUpperCase().replace(/[^A-Z0-9]/g, ""))
+    .pipe(
+      z
+        .string()
+        .regex(/^[A-Z2-9]{8}$/, "Kod 8 karakter olmalı (ör. K7MQ-2XPA)"),
+    ),
+});
+
+export const inviteSchema = z.object({
+  role: z.enum(["owner", "manager", "field"], "Rol seçin"),
+  label: z.string().trim().max(100, "En fazla 100 karakter").default(""),
+  days: z
+    .enum(["", "1", "7", "30", "365"])
+    .transform((v) => (v ? Number(v) : null)),
+  max_uses: z
+    .enum(["", "1", "5", "20", "100"])
+    .transform((v) => (v ? Number(v) : null)),
+});
+
 export const memberSchema = z.object({
   email: z
     .string()

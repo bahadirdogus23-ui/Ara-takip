@@ -229,6 +229,11 @@ export type Database = {
           id: string;
           name: string;
           tax_number: string | null;
+          plan_status: "pending" | "active" | "suspended";
+          paid_until: string | null;
+          payment_note: string | null;
+          payment_notified_at: string | null;
+          activated_at: string | null;
         };
         Insert: {
           id?: string;
@@ -297,6 +302,34 @@ export type Database = {
           vehicle_type: string;
         };
         Update: Partial<Database["public"]["Tables"]["vehicles"]["Insert"]>;
+        Relationships: Rel[];
+      };
+      invite_codes: {
+        Row: {
+          code: string;
+          tenant_id: string;
+          role: Database["public"]["Enums"]["member_role"];
+          label: string | null;
+          created_by: string;
+          created_at: string;
+          expires_at: string | null;
+          max_uses: number | null;
+          uses: number;
+          revoked: boolean;
+        };
+        Insert: never;
+        Update: { revoked?: boolean };
+        Relationships: Rel[];
+      };
+      invite_uses: {
+        Row: {
+          code: string;
+          tenant_id: string;
+          user_id: string;
+          used_at: string;
+        };
+        Insert: never;
+        Update: never;
         Relationships: Rel[];
       };
       work_item_prices: {
@@ -394,6 +427,44 @@ export type Database = {
         };
         Returns: undefined;
       };
+      am_platform_admin: { Args: Record<string, never>; Returns: boolean };
+      notify_payment: {
+        Args: { p_tenant: string; p_note: string };
+        Returns: undefined;
+      };
+      admin_tenants: {
+        Args: Record<string, never>;
+        Returns: {
+          id: string;
+          name: string;
+          plan_status: string;
+          paid_until: string | null;
+          payment_note: string | null;
+          payment_notified_at: string | null;
+          created_at: string;
+          owner_emails: string | null;
+          member_count: number;
+        }[];
+      };
+      admin_set_plan: {
+        Args: {
+          p_tenant: string;
+          p_status: string;
+          p_paid_until: string | null;
+        };
+        Returns: undefined;
+      };
+      create_invite: {
+        Args: {
+          p_tenant: string;
+          p_role: Database["public"]["Enums"]["member_role"];
+          p_label: string;
+          p_days: number | null;
+          p_max_uses: number | null;
+        };
+        Returns: string;
+      };
+      join_with_code: { Args: { p_code: string }; Returns: string };
       tenant_members: {
         Args: { p_tenant: string };
         Returns: {
