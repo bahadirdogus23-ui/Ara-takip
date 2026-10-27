@@ -1,6 +1,6 @@
 import ExcelJS from "exceljs";
 import { formatDateTR, isoDateTR } from "@/lib/format";
-import { unitLabel, type Report } from "@/lib/report";
+import { missingTonText, unitLabel, type Report } from "@/lib/report";
 
 const TL = '#,##0.00 "₺"';
 const QTY = "#,##0.###";
@@ -83,6 +83,11 @@ export async function buildReportWorkbook(r: Report): Promise<Uint8Array> {
     italic: true,
     color: { argb: "FF8A5A00" },
   };
+  for (const m of r.missingTon)
+    s.addRow([`Uyarı: ${missingTonText(m)}`]).font = {
+      bold: true,
+      color: { argb: "FFB45309" },
+    };
 
   // İmalat
   const p = wb.addWorksheet("İmalat");

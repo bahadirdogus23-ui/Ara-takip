@@ -508,4 +508,36 @@ exception when foreign_key_violation then
   raise notice 'GEÇTİ: T22h Bir firmanın aracı başka firmanın şantiyesine atanamaz';
 end $$;
 
+-- ---------------------------------------------------------------------------
+-- T23: Güzergâha bağlı kaleme elle imalat girilemez, elle imalatı olan kalem bağlanamaz
+-- ---------------------------------------------------------------------------
+select pg_temp.login('00000000-0000-0000-0000-00000000000b');
+insert into public.work_items(tenant_id, site_id, name, unit) values (:'tenant_b', :'site_b', 'Nakliye (sayaç)', 'sefer')
+  returning id as item_auto \gset
+insert into public.work_items(tenant_id, site_id, name, unit) values (:'tenant_b', :'site_b', 'Nakliye (elle)', 'sefer')
+  returning id as item_manual \gset
+insert into public.routes(tenant_id, site_id, name, work_item_id) values (:'tenant_b', :'site_b', 'Ocak → Döküm', :'item_auto');
+insert into public.production_entries(tenant_id, site_id, work_item_id, entry_date, quantity)
+  values (:'tenant_b', :'site_b', :'item_manual', current_date, 10);
+do $$ begin
+  insert into public.production_entries(tenant_id, site_id, work_item_id, entry_date, quantity)
+    select tenant_id, site_id, id, current_date, 5 from public.work_items where name = 'Nakliye (sayaç)';
+  raise exception 'TEST BAŞARISIZ: T23a bağlı kaleme elle imalat girildi';
+exception when raise_exception then
+  if sqlerrm like 'TEST BAŞARISIZ%' then raise; end if;
+  raise notice 'GEÇTİ: T23a Güzergâha bağlı kaleme elle imalat girilemez';
+end $$;
+do $$ begin
+  insert into public.routes(tenant_id, site_id, name, work_item_id)
+    select tenant_id, site_id, 'İkinci güzergâh', id from public.work_items where name = 'Nakliye (elle)';
+  raise exception 'TEST BAŞARISIZ: T23b elle imalatı olan kalem bağlandı';
+exception when raise_exception then
+  if sqlerrm like 'TEST BAŞARISIZ%' then raise; end if;
+  raise notice 'GEÇTİ: T23b Elle imalatı olan kalem güzergâha bağlanamaz';
+end $$;
+-- Aynı kaleme ikinci güzergâh bağlanabilir (elle imalatı yok)
+insert into public.routes(tenant_id, site_id, name, work_item_id) values (:'tenant_b', :'site_b', 'Ocak → Döküm 2', :'item_auto');
+reset role;
+select pg_temp.check((select count(*) from public.routes where work_item_id = :'item_auto') = 2, 'T23c Bağlı kaleme ikinci güzergâh eklenebilir');
+
 \echo 'TÜM VERİTABANI TESTLERİ GEÇTİ'

@@ -72,7 +72,7 @@ export default async function DailyEntryPage({
       .order("plate"),
     supabase
       .from("routes")
-      .select("id, name")
+      .select("id, name, work_item_id")
       .eq("site_id", site.id)
       .order("name"),
     supabase
@@ -97,6 +97,12 @@ export default async function DailyEntryPage({
   // Pasif araçlar formda çıkmaz ama eski kayıtlarda plakası görünür
   const activeVehicles = vehicles?.filter((v) => v.active) ?? [];
   const groups = tripGroups(tripDays, manager);
+  // Güzergâha bağlı sefer/ton kalemlerinin miktarı seferlerden gelir: elle girilmez (çift sayım)
+  const linked = new Set(routes?.flatMap((r) => r.work_item_id ?? []));
+  const isAuto = (i: { id: string; unit: string }) =>
+    linked.has(i.id) && (i.unit === "sefer" || i.unit === "ton");
+  const manualItems = items?.filter((i) => !isAuto(i)) ?? [];
+  const autoItems = items?.filter(isAuto) ?? [];
   const totalTrips = groups.reduce((s, g) => s + g.trips, 0);
 
   return (
@@ -111,24 +117,32 @@ export default async function DailyEntryPage({
 
       <section className="card space-y-3">
         <h2 className="text-lg font-bold">İmalat</h2>
-        {items?.length ? (
+        {manualItems.length ? (
           <ProductionForm
             siteId={site.id}
             date={date}
             requestId={randomUUID()}
-            items={items.map((i) => ({
+            items={manualItems.map((i) => ({
               value: i.id,
               label: `${i.code ? `${i.code} · ` : ""}${i.name} (${unitLabel(i.unit)})`,
             }))}
           />
         ) : (
           <p className="text-sm text-muted">
-            Bu şantiyede iş kalemi yok.{" "}
+            {autoItems.length
+              ? "Elle girilecek iş kalemi yok."
+              : "Bu şantiyede iş kalemi yok."}{" "}
             {manager && (
               <Link href={`/santiyeler/${site.id}`} className="link">
                 İş kalemi ekleyin
               </Link>
             )}
+          </p>
+        )}
+        {autoItems.length > 0 && (
+          <p className="text-xs text-muted">
+            Seferlerden otomatik hesaplananlar (elle girilmez):{" "}
+            {autoItems.map((i) => i.name).join(", ")}
           </p>
         )}
       </section>

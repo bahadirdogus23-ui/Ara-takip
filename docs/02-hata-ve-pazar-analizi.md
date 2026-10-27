@@ -108,7 +108,7 @@ Amacın: aşağıdaki hataları **önce yeniden üretip testle kanıtlamak**, so
 | H06 | P1 | Kayıtlar ve Giderler toplamları ilk 500 satırdan | Doğrulandı | ✔ `89644fa` |
 | H07 | P1 | "Şifremi unuttum" yok; Auth ayarları eksik | Kodda görüldü | ✔ `75bf9d2` |
 | H08 | P1 | Gece vardiyası iki güne bölünüyor (2 gün kira) | Kodda görüldü | — |
-| H09 | P1 | Elle imalat ile bağlı güzergâh seferleri çift sayılıyor | Kodda görüldü | — |
+| H09 | P1 | Elle imalat ile bağlı güzergâh seferleri çift sayılıyor | Kodda görüldü | ✔ F1-9 (tetikleyici) |
 | H10 | P1 | "Son seferi sil" 12 seferlik kaydın tamamını siliyor | Doğrulandı | ✔ `89644fa` |
 | H11 | P1 | Ücretsiz Supabase planı (duraklatma, yedek yok); Vercel planı belirsiz | Doğrulandı (Supabase) | — |
 | H12 | P1 | CI ve hata izleme yok | Doğrulandı | ✔ `0ec78b6` |
@@ -116,7 +116,7 @@ Amacın: aşağıdaki hataları **önce yeniden üretip testle kanıtlamak**, so
 | H14 | P2 | İki şantiyede aynı gün çalışan aracın kirası şantiye raporlarında çift | Kodda görüldü | — |
 | H15 | P2 | Sayaç firmanın tüm araçlarını gösteriyor (araç–şantiye ataması yok) | Kodda görüldü | ✔ `091efcf` |
 | H16 | P2 | Çift dokunuş ve iki puantörün aynı kamyonu sayması engellenmiyor | Kodda görüldü | ✔ F1-8 (çift sayım uyarısı) |
-| H17 | P2 | "Ton" birimli kalemde tonu girilmemiş seferler gelire girmiyor | Kodda görüldü | — |
+| H17 | P2 | "Ton" birimli kalemde tonu girilmemiş seferler gelire girmiyor | Kodda görüldü | ✔ F1-9 (rapor uyarısı) |
 | H18 | P2 | Hızlı kurulum tek işlem (transaction) değil | Kodda görüldü | — |
 | H19 | P2 | İş kuralları yalnız uygulamada; veritabanında yok, dönem kilidi yok | Kodda görüldü | — |
 | H20 | P2 | Makine/kamyon ayrımı serbest metinden tahmin ediliyor | Kodda görüldü | ✔ `091efcf` |

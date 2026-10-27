@@ -65,6 +65,9 @@ export type Report = {
   expenses: ReportExpense[];
   trips: ReportTrip[];
   machines: ReportMachine[];
+  // "Ton" birimli kaleme bağlı güzergâhta kantar tonu girilmemiş seferler:
+  // miktara ve tutara girmezler (H17)
+  missingTon: { item: string; trips: number }[];
   totals: {
     amount: number; // Σ imalat tutarı (KDV hariç)
     expenseNet: number; // Σ gider (KDV hariç)
@@ -120,6 +123,7 @@ export function summarizeReport(input: {
   machineLogs?: MachineLogRow[];
   // Kiralık/taşeron araçların ücretlerinden hesaplanan maliyet (taşeron hakedişi ile aynı hesap)
   vehicleCosts?: { total: number; lines: number };
+  missingTon?: Report["missingTon"];
 }): Report {
   const items: ReportItem[] = input.production.map((r) => ({
     code: r.code ?? null,
@@ -230,6 +234,7 @@ export function summarizeReport(input: {
     expenses,
     trips,
     machines,
+    missingTon: input.missingTon ?? [],
     totals: {
       amount: toTL(amountK),
       expenseNet: toTL(expenseNetK),
@@ -246,6 +251,29 @@ export function summarizeReport(input: {
         Math.round(machines.reduce((s, m) => s + m.fuel, 0) * 100) / 100,
     },
   };
+}
+
+// Rapor ekranı, PDF ve Excel'de aynı uyarı
+export const missingTonText = (m: Report["missingTon"][number]) =>
+  `${m.item}: ${m.trips} seferin kantar tonu girilmemiş; bu seferler miktara ve tutara girmedi.`;
+
+// Ton birimli kaleme bağlı güzergâhlarda tonu girilmemiş seferler, kalem başına
+export function missingTonnage(
+  items: { work_item_id: string; name: string; unit: string }[],
+  routes: { id: string; work_item_id: string | null }[],
+  tripDays: { route_id: string | null; untonned_trips: number }[],
+): Report["missingTon"] {
+  const tonItems = new Map(
+    items.filter((i) => i.unit === "ton").map((i) => [i.work_item_id, i.name]),
+  );
+  const itemOf = new Map(routes.map((r) => [r.id, r.work_item_id]));
+  const out = new Map<string, number>();
+  for (const t of tripDays) {
+    const item = t.route_id ? itemOf.get(t.route_id) : null;
+    if (!item || !tonItems.has(item) || !t.untonned_trips) continue;
+    out.set(item, (out.get(item) ?? 0) + Number(t.untonned_trips));
+  }
+  return [...out].map(([id, trips]) => ({ item: tonItems.get(id)!, trips }));
 }
 
 // Raporu kullanıcının kendi oturumuyla çeker: RLS sayesinde başka firmanın
@@ -267,17 +295,19 @@ export async function loadReport(
 
   const args = { p_site: siteId, p_from: from, p_to: to };
   const filter = { tenantId: tenant.id, siteId, from, to };
-  const [prod, exp, tripDays, vehicles, machineDays, pay] = await Promise.all([
-    supabase.rpc("production_summary", args),
-    supabase.rpc("expense_summary", args),
-    loadTripDays(supabase, filter),
-    supabase
-      .from("vehicles")
-      .select("id, plate, vehicle_type, fuel_norm_lph")
-      .eq("tenant_id", tenant.id),
-    loadMachineDays(supabase, filter),
-    loadContractorPayments(supabase, tenant.id, siteId, from, to),
-  ]);
+  const [prod, exp, tripDays, vehicles, machineDays, pay, routes] =
+    await Promise.all([
+      supabase.rpc("production_summary", args),
+      supabase.rpc("expense_summary", args),
+      loadTripDays(supabase, filter),
+      supabase
+        .from("vehicles")
+        .select("id, plate, vehicle_type, fuel_norm_lph")
+        .eq("tenant_id", tenant.id),
+      loadMachineDays(supabase, filter),
+      loadContractorPayments(supabase, tenant.id, siteId, from, to),
+      supabase.from("routes").select("id, work_item_id").eq("site_id", siteId),
+    ]);
   const failed = [prod, exp, vehicles].find((r) => r.error);
   if (failed?.error) throw new Error("Rapor verisi alınamadı");
 
@@ -300,5 +330,6 @@ export async function loadReport(
       total: pay.total,
       lines: pay.contractors.reduce((n, c) => n + c.lines.length, 0),
     },
+    missingTon: missingTonnage(prod.data ?? [], routes.data ?? [], tripDays),
   });
 }

@@ -4,7 +4,7 @@ import { canManage, getContext } from "@/lib/context";
 import { readFilters } from "@/lib/filters";
 import { formatDateTR, formatTL } from "@/lib/format";
 import { formatTrNumber } from "@/lib/number";
-import { loadReport, unitLabel } from "@/lib/report";
+import { loadReport, missingTonText, unitLabel } from "@/lib/report";
 
 export const metadata = { title: "Dönem raporu" };
 
@@ -100,6 +100,19 @@ export default async function ReportPage({
 
       <section className="space-y-2">
         <h2 className="text-lg font-bold">İmalat</h2>
+        {report.missingTon.length > 0 && (
+          <div className="rounded-xl border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-200">
+            <p className="font-semibold">Kantar tonu eksik seferler</p>
+            <ul className="mt-1 list-disc pl-5">
+              {report.missingTon.map((m) => (
+                <li key={m.item}>{missingTonText(m)}</li>
+              ))}
+            </ul>
+            <p className="mt-1 text-xs">
+              Hakedişten önce kantar fişlerini kontrol edin.
+            </p>
+          </div>
+        )}
         {items.length === 0 ? (
           <p className="card text-sm text-muted">Bu şantiyede iş kalemi yok.</p>
         ) : (

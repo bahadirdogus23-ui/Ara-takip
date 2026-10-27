@@ -10,7 +10,7 @@ import {
 } from "@react-pdf/renderer";
 import { formatDateTR, formatTL, isoDateTR } from "@/lib/format";
 import { formatTrNumber } from "@/lib/number";
-import { unitLabel, type Report } from "@/lib/report";
+import { missingTonText, unitLabel, type Report } from "@/lib/report";
 
 // PDF'in standart fontları ş, ğ, ı, İ harflerini içermez; Noto Sans gömülür (OFL lisanslı).
 const fontDir = path.join(process.cwd(), "assets", "fonts");
@@ -278,6 +278,16 @@ function ReportDocument({ r }: { r: Report }) {
               </Text>
             )}
           </>
+        )}
+
+        {r.missingTon.length > 0 && (
+          <View style={{ marginTop: 10 }}>
+            {r.missingTon.map((m) => (
+              <Text key={m.item} style={[s.muted, { color: "#b45309" }]}>
+                {`! ${missingTonText(m)}`}
+              </Text>
+            ))}
+          </View>
         )}
 
         <View style={s.note}>

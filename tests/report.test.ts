@@ -98,3 +98,30 @@ describe("dönem raporunda araç kirası", () => {
     });
   });
 });
+
+import { missingTonnage } from "@/lib/report";
+
+describe("kantar tonu eksik seferler", () => {
+  it("yalnız ton birimli kaleme bağlı güzergâhlardaki tonsuz seferleri sayar", () => {
+    const items = [
+      { work_item_id: "i-ton", name: "Hafriyat nakli", unit: "ton" },
+      { work_item_id: "i-sefer", name: "Nakliye", unit: "sefer" },
+    ];
+    const routes = [
+      { id: "r1", work_item_id: "i-ton" },
+      { id: "r2", work_item_id: "i-sefer" },
+      { id: "r3", work_item_id: null },
+    ];
+    const days = [
+      { route_id: "r1", untonned_trips: 3 },
+      { route_id: "r1", untonned_trips: 2 },
+      { route_id: "r2", untonned_trips: 7 },
+      { route_id: "r3", untonned_trips: 4 },
+      { route_id: null, untonned_trips: 9 },
+    ];
+    expect(missingTonnage(items, routes, days)).toEqual([
+      { item: "Hafriyat nakli", trips: 5 },
+    ]);
+    expect(missingTonnage(items, routes, [])).toEqual([]);
+  });
+});

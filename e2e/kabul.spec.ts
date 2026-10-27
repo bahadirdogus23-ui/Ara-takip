@@ -939,7 +939,7 @@ test("K20: tablet ve dizüstünde menünün tüm öğeleri ekranda", async ({
   }
 });
 
-test("K21: sayaçta önce şantiyeye atanmış araçlar, iş makinesi sayaçta yok", async ({
+test("K21: araç ataması, çift sayım ve kantar tonu uyarıları", async ({
   browser,
 }) => {
   const page = await newPage(browser);
@@ -1012,6 +1012,34 @@ test("K21: sayaçta önce şantiyeye atanmış araçlar, iş makinesi sayaçta y
   await expect(
     page.getByText(
       /34 AT 002: sefer kaydedildi\. 2 dakika içinde başka bir kullanıcı da bu aracı saydı/,
+    ),
+  ).toBeVisible();
+
+  // Güzergâha bağlı nakliye kalemi elle girilmez (seferlerden hesaplanır; çift sayım olmaz)
+  await page.goto("/gunluk");
+  await expect(
+    page.locator("#pr-work_item_id option", { hasText: "Hafriyat nakliyesi" }),
+  ).toHaveCount(0);
+  await expect(
+    page.getByText(/Seferlerden otomatik hesaplananlar.*Hafriyat nakliyesi/),
+  ).toBeVisible();
+
+  // Ton birimli kaleme bağlı güzergâhta tonu girilmemiş seferler raporda uyarılır
+  const tenantOf = `(select tenant_id from public.memberships m join auth.users u on u.id = m.user_id where u.email = '${email}')`;
+  psql(`with s as (select id, tenant_id from public.sites where tenant_id = ${tenantOf} and name = 'Baraj Yolu'),
+      wi as (insert into public.work_items(tenant_id, site_id, name, unit)
+        select tenant_id, id, 'Kaya nakli', 'ton' from s returning id, tenant_id, site_id),
+      r as (insert into public.routes(tenant_id, site_id, name, work_item_id)
+        select tenant_id, site_id, 'Kaya ocağı', id from wi returning id, tenant_id, site_id)
+    insert into public.trip_entries(tenant_id, site_id, vehicle_id, route_id, entry_date, trip_count, tonnage, created_by)
+    select r.tenant_id, r.site_id, v.id, r.id, (now() at time zone 'Europe/Istanbul')::date, 1, t.ton,
+      (select id from auth.users where email = '${email}')
+    from r join public.vehicles v on v.tenant_id = r.tenant_id and v.plate = '34 AT 001',
+      (values (null::numeric), (null), (null), (22.5)) t(ton)`);
+  await page.goto("/rapor");
+  await expect(
+    page.getByText(
+      "Kaya nakli: 3 seferin kantar tonu girilmemiş; bu seferler miktara ve tutara girmedi.",
     ),
   ).toBeVisible();
   await page.context().close();
