@@ -893,11 +893,19 @@ test("K18: şifremi unuttum ve şifre değiştirme", async ({ browser }) => {
     await page.getByRole("link", { name: "Şifremi unuttum" }).click();
     await page.locator("#email").fill(email);
     await page.getByRole("button", { name: "Bağlantı gönder" }).click();
-    await expect(
-      page.getByText(
-        "E-posta adresi kayıtlıysa şifre yenileme bağlantısı gönderildi",
-      ),
-    ).toBeVisible({ timeout: 30_000 });
+    try {
+      await expect(
+        page.getByText(
+          "E-posta adresi kayıtlıysa şifre yenileme bağlantısı gönderildi",
+        ),
+      ).toBeVisible({ timeout: 30_000 });
+    } catch (e) {
+      // Teşhis için: ekranda ne olduğu günlüğe yazılır
+      throw new Error(
+        `Şifre sıfırlama mesajı yok. Adres: ${page.url()}\nEkran: ${await page.locator("body").innerText()}`,
+        { cause: e },
+      );
+    }
   }
   // Başka siteye yönlendirme denemesi uygulama içinde kalır
   await page.goto("/giris?sonra=%2F%5Cevil.example");
