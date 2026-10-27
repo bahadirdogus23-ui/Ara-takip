@@ -72,12 +72,15 @@ export async function requestPasswordReset(
     return { fieldErrors: toFieldErrors(parsed.error), values };
 
   const supabase = await createClient();
-  const { error } = await supabase.auth.resetPasswordForEmail(
-    parsed.data.email,
-    {
-      redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/auth/callback?sonra=/sifre-yenile`,
-    },
-  );
+  // E-posta sunucusu yavaşsa kullanıcı beklemesin: en fazla 8 sn beklenir, gönderim arka planda sürer
+  const request = supabase.auth.resetPasswordForEmail(parsed.data.email, {
+    redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/auth/callback?sonra=/sifre-yenile`,
+  });
+  const result = await Promise.race([
+    request,
+    new Promise<null>((resolve) => setTimeout(() => resolve(null), 8000)),
+  ]);
+  const error = result?.error ?? null;
   if (
     error?.code === "over_email_send_rate_limit" ||
     error?.code === "over_request_rate_limit"
