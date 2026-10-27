@@ -3,12 +3,14 @@
 import { useActionState } from "react";
 import { Field, FormError, SubmitButton } from "@/components/form";
 import type { Tables } from "@/lib/database.types";
-import { SITE_STATUSES } from "@/lib/validation";
+import { DAY_START_HOURS, SITE_STATUSES } from "@/lib/validation";
 import { saveSite } from "./actions";
 
 export function SiteForm({ site }: { site?: Tables<"sites"> }) {
   const [state, action] = useActionState(saveSite, null);
   const status = state?.values?.status ?? site?.status ?? "active";
+  const dayStart =
+    state?.values?.day_start_hour ?? String(site?.day_start_hour ?? 0);
 
   return (
     <form action={action} className="space-y-4" noValidate>
@@ -78,6 +80,36 @@ export function SiteForm({ site }: { site?: Tables<"sites"> }) {
         </select>
         {state?.fieldErrors?.status && (
           <p className="text-sm text-red-600">{state.fieldErrors.status}</p>
+        )}
+      </div>
+
+      <div className="space-y-1">
+        <label htmlFor="day_start_hour" className="block text-sm font-medium">
+          İş günü başlangıcı
+        </label>
+        <select
+          id="day_start_hour"
+          name="day_start_hour"
+          defaultValue={dayStart}
+          aria-describedby="day_start_hour-hint"
+          className="input"
+        >
+          {DAY_START_HOURS.map((h) => (
+            <option key={h} value={h}>
+              {h === 0
+                ? "00:00 (gece yarısı)"
+                : `${String(h).padStart(2, "0")}:00`}
+            </option>
+          ))}
+        </select>
+        <p id="day_start_hour-hint" className="text-xs text-muted">
+          Gece vardiyası çalışıyorsanız ör. 06:00 seçin: 06:00&apos;dan önceki
+          seferler bir önceki iş gününe yazılır, vardiya iki güne bölünmez.
+        </p>
+        {state?.fieldErrors?.day_start_hour && (
+          <p className="text-sm text-red-600">
+            {state.fieldErrors.day_start_hour}
+          </p>
         )}
       </div>
 

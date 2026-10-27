@@ -28,3 +28,21 @@ describe("tarih ve para biçimleri", () => {
     expect(formatDateTR(null)).toBe("—");
   });
 });
+
+import { workDateTR } from "@/lib/format";
+
+describe("iş günü", () => {
+  // Türkiye UTC+3: 22:00 TR = 19:00Z, 04:00 TR (ertesi gün) = 01:00Z
+  const at = (iso: string) => new Date(iso);
+  it("gece yarısı başlangıçta takvim günüdür", () => {
+    expect(workDateTR(at("2026-10-27T19:00:00Z"))).toBe("2026-10-27");
+    expect(workDateTR(at("2026-10-28T01:00:00Z"))).toBe("2026-10-28");
+  });
+  it("06:00 başlangıçta 22:00–04:00 vardiyası tek iş günüdür", () => {
+    expect(workDateTR(at("2026-10-27T19:00:00Z"), 6)).toBe("2026-10-27");
+    expect(workDateTR(at("2026-10-28T01:00:00Z"), 6)).toBe("2026-10-27");
+    // 06:00 TR = 03:00Z: yeni iş günü
+    expect(workDateTR(at("2026-10-28T03:00:00Z"), 6)).toBe("2026-10-28");
+    expect(workDateTR(at("2026-10-28T02:59:00Z"), 6)).toBe("2026-10-27");
+  });
+});

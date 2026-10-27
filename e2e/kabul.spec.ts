@@ -1042,6 +1042,20 @@ test("K21: araç ataması, çift sayım ve kantar tonu uyarıları", async ({
       "Kaya nakli: 3 seferin kantar tonu girilmemiş; bu seferler miktara ve tutara girmedi.",
     ),
   ).toBeVisible();
+
+  // Gece vardiyası: şantiyenin iş günü başlangıcı 06:00 yapılır
+  await page.goto("/santiyeler");
+  await page.getByRole("link", { name: /Baraj Yolu/ }).click();
+  await page.getByText("Şantiye bilgilerini düzenle").click();
+  await page.locator("#day_start_hour").selectOption({ label: "06:00" });
+  await page.getByRole("button", { name: "Değişiklikleri kaydet" }).click();
+  await expect
+    .poll(() =>
+      psql(
+        `select day_start_hour from public.sites where name = 'Baraj Yolu' and tenant_id = ${tenantOf}`,
+      ),
+    )
+    .toBe("6");
   await page.context().close();
 });
 

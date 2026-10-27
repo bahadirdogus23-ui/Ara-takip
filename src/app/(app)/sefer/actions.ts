@@ -118,10 +118,14 @@ const formatGap = (minutes: number) => `${Math.round(minutes)} dakika`;
 export async function undoTrip(input: {
   siteId: string;
   vehicleId: string;
+  entryDate?: string; // sayacın iş günü (gece vardiyasında takvim gününden farklı olabilir)
 }): Promise<TapResult> {
   if (!isUuid(input.siteId) || !isUuid(input.vehicleId))
     return { ok: false, error: "Geçersiz istek" };
   const { supabase, user, tenant } = await getContext();
+  const entryDate = input.entryDate ?? isoDateTR();
+  if (!isAllowedTapDate(entryDate, 1))
+    return { ok: false, error: "Geçersiz istek" };
 
   let q = supabase
     .from("trip_entries")
@@ -129,7 +133,7 @@ export async function undoTrip(input: {
     .eq("tenant_id", tenant.id)
     .eq("site_id", input.siteId)
     .eq("vehicle_id", input.vehicleId)
-    .eq("entry_date", isoDateTR())
+    .eq("entry_date", entryDate)
     .order("created_at", { ascending: false })
     .limit(1);
   if (!canManage(tenant.role)) q = q.eq("created_by", user.id);

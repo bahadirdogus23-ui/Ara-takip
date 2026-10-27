@@ -202,6 +202,7 @@ export type Database = {
         Row: {
           code: string | null;
           created_at: string;
+          day_start_hour: number;
           employer: string | null;
           end_date: string | null;
           id: string;
@@ -213,6 +214,7 @@ export type Database = {
         };
         Insert: {
           code?: string | null;
+          day_start_hour?: number;
           employer?: string | null;
           end_date?: string | null;
           id?: string;

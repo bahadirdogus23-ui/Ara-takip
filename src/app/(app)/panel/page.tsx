@@ -17,7 +17,7 @@ import { SitePicker } from "@/components/site-picker";
 import { canManage, getContext, ROLE_LABELS } from "@/lib/context";
 import { buildDailySummary } from "@/lib/daily-summary";
 import { fuelCheck, suspiciousTrips } from "@/lib/field-checks";
-import { formatTL, isoDateTR, monthRangeTR } from "@/lib/format";
+import { formatTL, workDateTR, monthRangeTR } from "@/lib/format";
 import { toKurus, toTL } from "@/lib/money";
 import { formatTrNumber } from "@/lib/number";
 import { loadPhotos } from "@/lib/photo-load";
@@ -66,7 +66,7 @@ export default async function TodayPage({
 
   const { data: sites } = await supabase
     .from("sites")
-    .select("id, name")
+    .select("id, name, day_start_hour")
     .eq("tenant_id", tenant.id)
     .eq("status", "active")
     .order("name");
@@ -113,7 +113,7 @@ export default async function TodayPage({
     );
   }
 
-  const today = isoDateTR();
+  const today = workDateTR(new Date(), site.day_start_hour);
   const month = monthRangeTR();
   const [
     { data: todayItems },

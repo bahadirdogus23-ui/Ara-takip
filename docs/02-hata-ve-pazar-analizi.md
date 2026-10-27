@@ -107,7 +107,7 @@ Amacın: aşağıdaki hataları **önce yeniden üretip testle kanıtlamak**, so
 | H05 | P1 | Saha personeli birim fiyat ve kira ücretlerini görüyor | Doğrulandı | ✔ `d5f9854` |
 | H06 | P1 | Kayıtlar ve Giderler toplamları ilk 500 satırdan | Doğrulandı | ✔ `89644fa` |
 | H07 | P1 | "Şifremi unuttum" yok; Auth ayarları eksik | Kodda görüldü | ✔ `75bf9d2` |
-| H08 | P1 | Gece vardiyası iki güne bölünüyor (2 gün kira) | Kodda görüldü | — |
+| H08 | P1 | Gece vardiyası iki güne bölünüyor (2 gün kira) | Kodda görüldü | ✔ F1-3 (iş günü başlangıcı) |
 | H09 | P1 | Elle imalat ile bağlı güzergâh seferleri çift sayılıyor | Kodda görüldü | ✔ F1-9 (tetikleyici) |
 | H10 | P1 | "Son seferi sil" 12 seferlik kaydın tamamını siliyor | Doğrulandı | ✔ `89644fa` |
 | H11 | P1 | Ücretsiz Supabase planı (duraklatma, yedek yok); Vercel planı belirsiz | Doğrulandı (Supabase) | — |

@@ -5,7 +5,7 @@ import { DeleteButton } from "@/components/form";
 import { SitePicker } from "@/components/site-picker";
 import { canManage, getContext } from "@/lib/context";
 import { fuelCheck } from "@/lib/field-checks";
-import { formatDateTR, isoDateTR } from "@/lib/format";
+import { formatDateTR, workDateTR } from "@/lib/format";
 import { formatTrNumber } from "@/lib/number";
 import { pickSite } from "@/lib/site-pref";
 import { deleteMachineLog } from "./actions";
@@ -31,7 +31,7 @@ export default async function MachinePage({
 
   const { data: sites } = await supabase
     .from("sites")
-    .select("id, name")
+    .select("id, name, day_start_hour")
     .eq("tenant_id", tenant.id)
     .eq("status", "active")
     .order("name");
@@ -52,7 +52,7 @@ export default async function MachinePage({
     );
   }
 
-  const today = isoDateTR();
+  const today = workDateTR(new Date(), site.day_start_hour);
   const date = tarih && /^\d{4}-\d{2}-\d{2}$/.test(tarih) ? tarih : today;
   const [{ data: vehicles }, { data: logs }] = await Promise.all([
     supabase

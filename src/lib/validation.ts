@@ -134,6 +134,9 @@ export const SITE_STATUSES = {
   completed: "Tamamlandı",
 } as const;
 
+// Şantiyenin iş günü başlangıç saati seçenekleri (gece vardiyası için)
+export const DAY_START_HOURS = [0, 4, 5, 6, 7, 8] as const;
+
 export const siteSchema = z
   .object({
     name: z
@@ -150,6 +153,12 @@ export const siteSchema = z
       ["active", "paused", "completed"],
       "Geçerli bir durum seçin",
     ),
+    day_start_hour: z
+      .enum(DAY_START_HOURS.map(String) as [string, ...string[]], {
+        message: "Geçerli bir saat seçin",
+      })
+      .optional()
+      .transform((v) => Number(v ?? 0)),
   })
   .refine((s) => !s.start_date || !s.end_date || s.end_date >= s.start_date, {
     path: ["end_date"],

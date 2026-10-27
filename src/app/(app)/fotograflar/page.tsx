@@ -2,7 +2,7 @@ import { PhotoGrid } from "@/components/photo-grid";
 import { PhotoUploader } from "@/components/photo-uploader";
 import { SitePicker } from "@/components/site-picker";
 import { canManage, getContext } from "@/lib/context";
-import { formatDateTR, isoDateTR, monthRangeTR } from "@/lib/format";
+import { formatDateTR, workDateTR, monthRangeTR } from "@/lib/format";
 import { loadPhotos } from "@/lib/photo-load";
 import { pickSite } from "@/lib/site-pref";
 
@@ -17,7 +17,7 @@ export default async function PhotosPage({
   const { supabase, user, tenant } = await getContext();
   const { data: sites } = await supabase
     .from("sites")
-    .select("id, name")
+    .select("id, name, day_start_hour")
     .eq("tenant_id", tenant.id)
     .eq("status", "active")
     .order("name");
@@ -29,7 +29,7 @@ export default async function PhotosPage({
       </p>
     );
 
-  const today = isoDateTR();
+  const today = workDateTR(new Date(), site.day_start_hour);
   const month = monthRangeTR();
   const photos = await loadPhotos(
     supabase,

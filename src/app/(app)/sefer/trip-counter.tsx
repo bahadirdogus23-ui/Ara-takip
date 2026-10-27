@@ -19,7 +19,9 @@ import {
   useState,
   useTransition,
 } from "react";
+import { useRouter } from "next/navigation";
 import { minTapGapMinutes } from "@/lib/field-checks";
+import { workDateTR } from "@/lib/format";
 import { formatTrNumber, parseTrNumber } from "@/lib/number";
 import {
   discardRejected,
@@ -59,6 +61,7 @@ type Props = {
   userId: string;
   siteId: string;
   today: string;
+  dayStartHour: number; // şantiyenin iş günü başlangıç saati
   vehicles: CounterVehicle[];
   routes: { id: string; name: string; cycleMinutes: number | null }[];
 };
@@ -96,9 +99,11 @@ export function TripCounter({
   userId,
   siteId,
   today,
+  dayStartHour,
   vehicles,
   routes,
 }: Props) {
+  const router = useRouter();
   const owner: QueueOwner = useMemo(
     () => ({ tenantId, userId }),
     [tenantId, userId],
@@ -205,12 +210,15 @@ export function TripCounter({
   function record(v: CounterVehicle, ton: number | null) {
     navigator.vibrate?.(25);
     lastTap.current.set(v.id, Date.now());
+    // Sayfa açıkken iş günü değişmiş olabilir (ör. gece vardiyası sabah bitti): tarih dokunuş anında hesaplanır
+    const entryDate = workDateTR(new Date(), dayStartHour);
+    if (entryDate !== today) router.refresh();
     const item: QueuedTap = {
       siteId,
       vehicleId: v.id,
       routeId: routeId || null,
       requestId: crypto.randomUUID(),
-      entryDate: today,
+      entryDate,
       tonnage: ton,
       at: Date.now(),
       tenantId: owner.tenantId,
@@ -322,7 +330,11 @@ export function TripCounter({
     lastTap.current.delete(v.id);
     startTransition(async () => {
       adjust({ id: v.id, delta: -1, ton: null });
-      const res = await undoTrip({ siteId, vehicleId: v.id });
+      const res = await undoTrip({
+        siteId,
+        vehicleId: v.id,
+        entryDate: today,
+      });
       setMessage(
         res.ok
           ? { text: `${v.plate}: son sefer geri alındı` }

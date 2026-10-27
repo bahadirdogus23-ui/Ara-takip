@@ -2,7 +2,7 @@ import { Truck } from "lucide-react";
 import Link from "next/link";
 import { SitePicker } from "@/components/site-picker";
 import { canManage, getContext } from "@/lib/context";
-import { formatDateTR, isoDateTR } from "@/lib/format";
+import { formatDateTR, workDateTR } from "@/lib/format";
 import { suspiciousTrips } from "@/lib/field-checks";
 import { pickSite } from "@/lib/site-pref";
 import { loadTripDays } from "@/lib/summaries";
@@ -28,7 +28,7 @@ export default async function TripCounterPage({
 
   const { data: sites } = await supabase
     .from("sites")
-    .select("id, name")
+    .select("id, name, day_start_hour")
     .eq("tenant_id", tenant.id)
     .eq("status", "active")
     .order("name");
@@ -43,7 +43,7 @@ export default async function TripCounterPage({
       />
     );
 
-  const today = isoDateTR();
+  const today = workDateTR(new Date(), site.day_start_hour);
   const [{ data: vehicles }, { data: routes }, { data: links }, days] =
     await Promise.all([
       supabase
@@ -141,6 +141,7 @@ export default async function TripCounterPage({
           userId={user.id}
           siteId={site.id}
           today={today}
+          dayStartHour={site.day_start_hour}
           vehicles={counted}
           routes={(routes ?? []).map((r) => ({
             id: r.id,

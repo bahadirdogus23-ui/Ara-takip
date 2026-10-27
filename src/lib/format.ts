@@ -12,6 +12,12 @@ export function isoDateTR(now: Date = new Date()): string {
   }).format(now);
 }
 
+// İş günü: şantiyenin iş günü başlangıç saatinden önceki anlar önceki güne sayılır
+// (ör. başlangıç 06:00 ise 03:00'teki sefer dünün iş gününe yazılır). Türkiye'de yaz saati yok.
+export function workDateTR(now: Date = new Date(), dayStartHour = 0): string {
+  return isoDateTR(new Date(now.getTime() - dayStartHour * 3_600_000));
+}
+
 // İçinde bulunulan ayın ilk ve son günü (Türkiye saatine göre)
 export function monthRangeTR(now: Date = new Date()): {
   from: string;

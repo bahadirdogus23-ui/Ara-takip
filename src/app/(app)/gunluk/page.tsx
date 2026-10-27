@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import Link from "next/link";
 import { DeleteButton } from "@/components/form";
 import { canManage, getContext } from "@/lib/context";
-import { formatDateTR, isoDateTR } from "@/lib/format";
+import { formatDateTR, workDateTR } from "@/lib/format";
 import { pickSite } from "@/lib/site-pref";
 import { formatTrNumber } from "@/lib/number";
 import { loadTripDays } from "@/lib/summaries";
@@ -27,7 +27,7 @@ export default async function DailyEntryPage({
 
   const { data: sites } = await supabase
     .from("sites")
-    .select("id, name")
+    .select("id, name, day_start_hour")
     .eq("tenant_id", tenant.id)
     .eq("status", "active")
     .order("name");
@@ -49,7 +49,7 @@ export default async function DailyEntryPage({
   }
 
   const site = (await pickSite(sites, santiye))!;
-  const today = isoDateTR();
+  const today = workDateTR(new Date(), site.day_start_hour);
   const date = tarih && /^\d{4}-\d{2}-\d{2}$/.test(tarih) ? tarih : today;
 
   const [
