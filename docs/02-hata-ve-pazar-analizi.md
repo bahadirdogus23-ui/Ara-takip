@@ -1,5 +1,7 @@
 # Hafriyol — Hata Analizi, Pazar Analizi ve Yol Haritası (Ana Prompt)
 
+> **Güncelleme 27.10.2026:** Faz 0 hatalarının çoğu düzeltildi; bkz. 4.4 tablosundaki "Düzeltildi" sütunu.
+>
 > **Nasıl kullanılır:** Bu belgenin tamamını bir yapay zekâya (Claude, ChatGPT vb.) yapıştırın. Belge; rol, bağlam, kurallar, bulgular, görevler ve kabul kriterlerini içerir. Tek bir bölümü (ör. yalnızca "4. Hata analizi") vermek de yeterlidir. Tarih: 27.10.2026. Kod sürümü: `c305a80` (dal `ccr-0055c109-5sddea`).
 
 ---
@@ -96,40 +98,40 @@ Amacın: aşağıdaki hataları **önce yeniden üretip testle kanıtlamak**, so
 
 ### 4.4 Özet tablo
 
-| Kimlik | Önem | Başlık | Durum |
-|---|---|---|---|
-| H01 | P0 | Canlıda "PDF indir" çalışmıyor | Doğrulandı |
-| H02 | P0 | 1000 satır sınırı: rapor, hakediş ve otomatik kira eksik çıkıyor | Doğrulandı |
-| H03 | P0 | İnternetsiz girilen seferler kayboluyor | Doğrulandı |
-| H04 | P1 | Ücret değişikliği geçmiş dönemi değiştiriyor | Doğrulandı |
-| H05 | P1 | Saha personeli birim fiyat ve kira ücretlerini görüyor | Doğrulandı |
-| H06 | P1 | Kayıtlar ve Giderler toplamları ilk 500 satırdan | Doğrulandı |
-| H07 | P1 | "Şifremi unuttum" yok; Auth ayarları eksik | Kodda görüldü |
-| H08 | P1 | Gece vardiyası iki güne bölünüyor (2 gün kira) | Kodda görüldü |
-| H09 | P1 | Elle imalat ile bağlı güzergâh seferleri çift sayılıyor | Kodda görüldü |
-| H10 | P1 | "Son seferi sil" 12 seferlik kaydın tamamını siliyor | Doğrulandı |
-| H11 | P1 | Ücretsiz Supabase planı (duraklatma, yedek yok); Vercel planı belirsiz | Doğrulandı (Supabase) |
-| H12 | P1 | CI ve hata izleme yok | Doğrulandı |
-| H13 | P3 | Giriş sonrası yönlendirme (`sonra`) kontrolü zayıf | Şüpheli |
-| H14 | P2 | İki şantiyede aynı gün çalışan aracın kirası şantiye raporlarında çift | Kodda görüldü |
-| H15 | P2 | Sayaç firmanın tüm araçlarını gösteriyor (araç–şantiye ataması yok) | Kodda görüldü |
-| H16 | P2 | Çift dokunuş ve iki puantörün aynı kamyonu sayması engellenmiyor | Kodda görüldü |
-| H17 | P2 | "Ton" birimli kalemde tonu girilmemiş seferler gelire girmiyor | Kodda görüldü |
-| H18 | P2 | Hızlı kurulum tek işlem (transaction) değil | Kodda görüldü |
-| H19 | P2 | İş kuralları yalnız uygulamada; veritabanında yok, dönem kilidi yok | Kodda görüldü |
-| H20 | P2 | Makine/kamyon ayrımı serbest metinden tahmin ediliyor | Kodda görüldü |
-| H21 | P2 | Service worker önbelleği: yanlış şantiye, paylaşılan telefon, eski veri uyarısı yok | Kodda görüldü |
-| H22 | P2 | Fotoğraflar internetsiz kuyruğa alınmıyor; sefere bağlanamıyor | Kodda görüldü |
-| H23 | P2 | Tablet ve dizüstünde üst menü ekrandan taşıyor | Doğrulandı |
-| H24 | P2 | Araç, güzergâh ve üyelik değişiklikleri işlem geçmişine yazılmıyor | Kodda görüldü |
-| H25 | P2 | Kullanıcı ekleme: davet yok, e-posta varlığı sızıyor, rıza alınmıyor | Kodda görüldü |
-| H26 | P2 | m³ ve kabarma katsayısı yok; kapasite yalnız ton | Kodda görüldü |
-| H27 | P3 | RLS'te çoklu izin politikası (Supabase danışmanı uyarısı) | Doğrulandı |
-| H28 | P3 | Her istekte iki kez `getUser` (gecikme) | Kodda görüldü |
-| H29 | P3 | Excel/PDF'te KDV dahil toplam ondalıklı sayıyla toplanıyor | Kodda görüldü |
-| H30 | P3 | Otomatik araç kirası KDV'siz; "KDV dahil toplam" eksik görünür | Kodda görüldü |
-| H31 | P3 | Sınırsız firma açılabiliyor | Kodda görüldü |
-| H32 | P3 | Kayıt düzenleme yok (yalnız sil ve yeniden gir) | Kodda görüldü |
+| Kimlik | Önem | Başlık | Durum | Düzeltildi |
+|---|---|---|---|---|
+| H01 | P0 | Canlıda "PDF indir" çalışmıyor | Doğrulandı | ✔ `b635737` |
+| H02 | P0 | 1000 satır sınırı: rapor, hakediş ve otomatik kira eksik çıkıyor | Doğrulandı | ✔ `89644fa` |
+| H03 | P0 | İnternetsiz girilen seferler kayboluyor | Doğrulandı | ✔ `1277bce` |
+| H04 | P1 | Ücret değişikliği geçmiş dönemi değiştiriyor | Doğrulandı | — |
+| H05 | P1 | Saha personeli birim fiyat ve kira ücretlerini görüyor | Doğrulandı | ✔ `d5f9854` |
+| H06 | P1 | Kayıtlar ve Giderler toplamları ilk 500 satırdan | Doğrulandı | ✔ `89644fa` |
+| H07 | P1 | "Şifremi unuttum" yok; Auth ayarları eksik | Kodda görüldü | ✔ `75bf9d2` |
+| H08 | P1 | Gece vardiyası iki güne bölünüyor (2 gün kira) | Kodda görüldü | — |
+| H09 | P1 | Elle imalat ile bağlı güzergâh seferleri çift sayılıyor | Kodda görüldü | — |
+| H10 | P1 | "Son seferi sil" 12 seferlik kaydın tamamını siliyor | Doğrulandı | ✔ `89644fa` |
+| H11 | P1 | Ücretsiz Supabase planı (duraklatma, yedek yok); Vercel planı belirsiz | Doğrulandı (Supabase) | — |
+| H12 | P1 | CI ve hata izleme yok | Doğrulandı | ✔ `0ec78b6` |
+| H13 | P3 | Giriş sonrası yönlendirme (`sonra`) kontrolü zayıf | Şüpheli | ✔ `75bf9d2` |
+| H14 | P2 | İki şantiyede aynı gün çalışan aracın kirası şantiye raporlarında çift | Kodda görüldü | — |
+| H15 | P2 | Sayaç firmanın tüm araçlarını gösteriyor (araç–şantiye ataması yok) | Kodda görüldü | — |
+| H16 | P2 | Çift dokunuş ve iki puantörün aynı kamyonu sayması engellenmiyor | Kodda görüldü | — |
+| H17 | P2 | "Ton" birimli kalemde tonu girilmemiş seferler gelire girmiyor | Kodda görüldü | — |
+| H18 | P2 | Hızlı kurulum tek işlem (transaction) değil | Kodda görüldü | — |
+| H19 | P2 | İş kuralları yalnız uygulamada; veritabanında yok, dönem kilidi yok | Kodda görüldü | — |
+| H20 | P2 | Makine/kamyon ayrımı serbest metinden tahmin ediliyor | Kodda görüldü | — |
+| H21 | P2 | Service worker önbelleği: yanlış şantiye, paylaşılan telefon, eski veri uyarısı yok | Kodda görüldü | — |
+| H22 | P2 | Fotoğraflar internetsiz kuyruğa alınmıyor; sefere bağlanamıyor | Kodda görüldü | — |
+| H23 | P2 | Tablet ve dizüstünde üst menü ekrandan taşıyor | Doğrulandı | ✔ `75bf9d2` |
+| H24 | P2 | Araç, güzergâh ve üyelik değişiklikleri işlem geçmişine yazılmıyor | Kodda görüldü | — |
+| H25 | P2 | Kullanıcı ekleme: davet yok, e-posta varlığı sızıyor, rıza alınmıyor | Kodda görüldü | — |
+| H26 | P2 | m³ ve kabarma katsayısı yok; kapasite yalnız ton | Kodda görüldü | — |
+| H27 | P3 | RLS'te çoklu izin politikası (Supabase danışmanı uyarısı) | Doğrulandı | — |
+| H28 | P3 | Her istekte iki kez `getUser` (gecikme) | Kodda görüldü | — |
+| H29 | P3 | Excel/PDF'te KDV dahil toplam ondalıklı sayıyla toplanıyor | Kodda görüldü | — |
+| H30 | P3 | Otomatik araç kirası KDV'siz; "KDV dahil toplam" eksik görünür | Kodda görüldü | — |
+| H31 | P3 | Sınırsız firma açılabiliyor | Kodda görüldü | — |
+| H32 | P3 | Kayıt düzenleme yok (yalnız sil ve yeniden gir) | Kodda görüldü | — |
 
 ### 4.5 Ayrıntılı bulgular
 
@@ -493,6 +495,8 @@ Fark yaratacak 5 özellik:
 Efor: S (≤2 gün), M (≤1 hafta), L (>1 hafta). Her madde kabul kriteriyle birlikte yapılır.
 
 ### Faz 0 — Güven (≈1 hafta, satıştan önce zorunlu)
+
+> **Durum (27.10.2026):** F0-1 … F0-7 tamamlandı, testleri yazıldı ve canlıya gönderildi (K15, K16, K18, K20, T19, T20; GitHub Actions). F0-8 (ücretli plan) ve F0-9 (KVKK) kullanıcı kararı bekliyor.
 
 | # | İş | Efor | Kabul kriteri |
 |---|---|---|---|

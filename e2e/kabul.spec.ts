@@ -804,7 +804,7 @@ test("K18: şifremi unuttum ve şifre değiştirme", async ({ browser }) => {
       page.getByText(
         "E-posta adresi kayıtlıysa şifre yenileme bağlantısı gönderildi",
       ),
-    ).toBeVisible();
+    ).toBeVisible({ timeout: 30_000 });
   }
   // Başka siteye yönlendirme denemesi uygulama içinde kalır
   await page.goto("/giris?sonra=%2F%5Cevil.example");

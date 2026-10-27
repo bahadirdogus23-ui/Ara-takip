@@ -67,6 +67,8 @@ export API_EXTERNAL_URL="http://127.0.0.1:$API_PORT/auth/v1" GOTRUE_SITE_URL="ht
 export GOTRUE_URI_ALLOW_LIST="http://localhost:3000/**"
 export GOTRUE_MAILER_AUTOCONFIRM=true GOTRUE_EXTERNAL_EMAIL_ENABLED=true GOTRUE_DISABLE_SIGNUP=false
 export GOTRUE_RATE_LIMIT_EMAIL_SENT=1000 GOTRUE_SMTP_ADMIN_EMAIL=test@hafriyol.local
+# E-posta gönderilmez: kapalı yerel port, deneme beklemeden hata verir (CI sunucusunda takılmasın)
+export GOTRUE_SMTP_HOST=127.0.0.1 GOTRUE_SMTP_PORT=2500
 export GOTRUE_API_HOST=127.0.0.1 PORT=$AUTH_PORT GOTRUE_LOG_LEVEL=warn
 "$BIN/auth" migrate > "$E2E/auth-migrate.log" 2>&1
 "$BIN/auth" serve > "$E2E/auth.log" 2>&1 &

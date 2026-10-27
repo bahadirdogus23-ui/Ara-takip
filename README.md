@@ -1,5 +1,7 @@
 # Hafriyol
 
+[![Kontroller](https://github.com/bahadirdogus23-ui/Ara-takip/actions/workflows/ci.yml/badge.svg)](https://github.com/bahadirdogus23-ui/Ara-takip/actions/workflows/ci.yml)
+
 Küçük ve orta ölçekli yol, altyapı ve hafriyat firmaları için şantiye imalat, sefer,
 gider ve dönem raporu takip uygulaması.
 
@@ -41,7 +43,7 @@ npm run lint        # kod kuralları
 npm run typecheck   # TypeScript tip kontrolü
 npm test            # doğrulama, hesap, Excel ve PDF testleri (PDF testi pdftotext ister)
 npm run test:db     # veritabanı güvenlik ve hesap testleri (PostgreSQL gerekir)
-npm run build       # canlıya çıkacak derleme
+npm run build       # canlıya çıkacak derleme + PDF paketinde eksik dosya denetimi
 ```
 
 ### Supabase ayarı (bir kez)
@@ -49,9 +51,12 @@ npm run build       # canlıya çıkacak derleme
 Supabase → Authentication → URL Configuration:
 
 - **Site URL:** `https://hafriyol.vercel.app`
-- **Redirect URLs:** `https://hafriyol.vercel.app/auth/callback` ve yerel geliştirme için `http://localhost:3000/auth/callback`
+- **Redirect URLs:** `https://hafriyol.vercel.app/auth/callback**` ve yerel geliştirme için `http://localhost:3000/auth/callback**` (sondaki `**`, şifre yenileme dönüşündeki `?sonra=/sifre-yenile` için gerekli)
+- **Leaked password protection:** açık (Authentication → Policies)
 
-Bu yapılmazsa kayıttan sonra gelen e-posta doğrulama bağlantısı uygulamaya dönmez.
+Bu yapılmazsa e-posta doğrulama ve şifre yenileme bağlantıları uygulamaya dönmez.
+
+Her gönderimde GitHub Actions lint, tip kontrolü, birim, veritabanı ve kabul testlerini çalıştırır (`.github/workflows/ci.yml`).
 
 ## Klasörler
 
@@ -77,7 +82,7 @@ uygulama ona bağlanır ve kabul testleri telefon ekran boyutunda çalışır:
 ```bash
 ./scripts/e2e-storage-build.sh  # bir kez: fotoğraf servisi (Supabase Storage) kaynaktan derlenir
 ./scripts/e2e-stack.sh        # ilk seferde Auth ve PostgREST ikili dosyalarını indirir
-npm run test:e2e              # K1–K14 kabul testleri
+npm run test:e2e              # K1–K20 kabul testleri (PostgREST, Supabase gibi en fazla 1000 satır döndürür)
 ./scripts/e2e-stack.sh stop
 ```
 
