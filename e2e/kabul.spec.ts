@@ -891,21 +891,18 @@ test("K18: şifremi unuttum ve şifre değiştirme", async ({ browser }) => {
   for (const email of [u.email, `yok-${run}@hafriyol.local`]) {
     await page.goto("/giris");
     await page.getByRole("link", { name: "Şifremi unuttum" }).click();
+    // Giriş sayfasında da #email var: yeni sayfa açılmadan yazılırsa eski forma gider
+    await page.waitForURL("**/sifre-unuttum");
+    await expect(
+      page.getByRole("heading", { name: "Şifremi unuttum" }),
+    ).toBeVisible();
     await page.locator("#email").fill(email);
     await page.getByRole("button", { name: "Bağlantı gönder" }).click();
-    try {
-      await expect(
-        page.getByText(
-          "E-posta adresi kayıtlıysa şifre yenileme bağlantısı gönderildi",
-        ),
-      ).toBeVisible({ timeout: 30_000 });
-    } catch (e) {
-      // Teşhis için: ekranda ne olduğu günlüğe yazılır
-      throw new Error(
-        `Şifre sıfırlama mesajı yok. Adres: ${page.url()}\nEkran: ${await page.locator("body").innerText()}`,
-        { cause: e },
-      );
-    }
+    await expect(
+      page.getByText(
+        "E-posta adresi kayıtlıysa şifre yenileme bağlantısı gönderildi",
+      ),
+    ).toBeVisible({ timeout: 15_000 });
   }
   // Başka siteye yönlendirme denemesi uygulama içinde kalır
   await page.goto("/giris?sonra=%2F%5Cevil.example");
