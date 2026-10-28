@@ -1,4 +1,4 @@
-import { ChevronRight } from "lucide-react";
+import { ChevronRight, ShieldCheck } from "lucide-react";
 import Link from "next/link";
 import { SignOutButton } from "@/components/sign-out-button";
 import { canManage, getContext } from "@/lib/context";
@@ -7,7 +7,8 @@ import { MenuList } from "./menu-list";
 export const metadata = { title: "Menü" };
 
 export default async function MenuPage() {
-  const { tenant } = await getContext();
+  const { supabase, tenant } = await getContext();
+  const { data: admin } = await supabase.rpc("am_platform_admin");
   return (
     <div className="mx-auto max-w-lg space-y-4">
       <h1 className="text-2xl font-bold">Menü</h1>
@@ -15,6 +16,18 @@ export default async function MenuPage() {
         manager={canManage(tenant.role)}
         owner={tenant.role === "owner"}
       />
+      {admin && (
+        <Link
+          href="/yonetim"
+          className="card flex items-center justify-between py-4 text-sm font-medium"
+        >
+          <span className="flex items-center gap-2">
+            <ShieldCheck className="size-5 text-brand" aria-hidden />
+            Hafriyol yönetim
+          </span>
+          <ChevronRight className="size-5 text-muted" aria-hidden />
+        </Link>
+      )}
       <Link
         href="/basla"
         className="card flex items-center justify-between py-4 text-sm font-medium"

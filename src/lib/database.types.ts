@@ -529,6 +529,73 @@ export type Database = {
           member_count: number;
         }[];
       };
+      admin_overview: {
+        Args: Record<string, never>;
+        Returns: {
+          tenants_total: number;
+          tenants_active: number;
+          tenants_pending: number;
+          tenants_suspended: number;
+          payment_notices: number;
+          users_total: number;
+          users_unconfirmed: number;
+          trips_30d: number;
+          active_tenants_7d: number;
+        }[];
+      };
+      admin_tenant_list: {
+        Args: Record<string, never>;
+        Returns: {
+          id: string;
+          name: string;
+          plan_status: string;
+          paid_until: string | null;
+          payment_note: string | null;
+          payment_notified_at: string | null;
+          created_at: string;
+          activated_at: string | null;
+          owner_emails: string | null;
+          member_count: number;
+          site_count: number;
+          vehicle_count: number;
+          trips_30d: number;
+          last_activity: string | null;
+        }[];
+      };
+      admin_tenant_members: {
+        Args: { p_tenant: string };
+        Returns: {
+          user_id: string;
+          email: string;
+          role: Database["public"]["Enums"]["member_role"];
+          joined_at: string;
+          last_sign_in_at: string | null;
+          confirmed: boolean;
+        }[];
+      };
+      admin_tenant_sites: {
+        Args: { p_tenant: string };
+        Returns: {
+          id: string;
+          name: string;
+          status: string;
+          locked_until: string | null;
+          trips_30d: number;
+          last_trip_at: string | null;
+        }[];
+      };
+      admin_users: {
+        Args: Record<string, never>;
+        Returns: {
+          user_id: string;
+          email: string;
+          created_at: string;
+          last_sign_in_at: string | null;
+          confirmed: boolean;
+          platform_admin: boolean;
+          memberships: string | null;
+        }[];
+      };
       admin_set_plan: {
         Args: {
           p_tenant: string;

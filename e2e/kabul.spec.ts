@@ -115,8 +115,36 @@ test("K1: kayıt olur, firma kurar, ödeme onaylanınca firma sahibi olarak baş
   await expect(row.getByText("27.10 EFT")).toBeVisible();
   await row.getByRole("button", { name: "1 yıl aktif et" }).click();
   await expect(row.getByText(/^Aktif · /)).toBeVisible();
+  await expect(
+    admin.getByRole("region", { name: "Özet" }).getByText("Ödeme bekliyor"),
+  ).toBeVisible();
   await shot(admin, "yonetim");
+
+  // Firma ayrıntısı: sahibi rolüyle; kullanıcılar sekmesinde arama
+  await row.getByRole("link", { name: "Ayrıntı" }).click();
+  await expect(
+    admin.getByRole("heading", { name: "Test Hafriyat Ltd. Şti." }),
+  ).toBeVisible();
+  const member = admin.locator("li", { hasText: owner.email });
+  await expect(member.getByText("Firma sahibi")).toBeVisible();
+  await admin.goto(
+    `/yonetim?sekme=kullanicilar&q=${encodeURIComponent(owner.email)}`,
+  );
+  await expect(
+    admin.getByText("Test Hafriyat Ltd. Şti. (firma sahibi)"),
+  ).toBeVisible();
+  // Firması olmayan yönetici başlangıç sayfasında yönetim ekranına gider
+  await admin.goto("/basla");
+  await expect(
+    admin.getByRole("link", { name: "Hafriyol yönetim ekranı" }),
+  ).toBeVisible();
   await admin.context().close();
+
+  // Yönetici olmayan kullanıcı yönetim ekranını göremez
+  await page.goto("/yonetim");
+  await expect(
+    page.getByRole("heading", { name: "Sayfa bulunamadı" }),
+  ).toBeVisible();
 
   // Sahip artık uygulamada, firma sahibi olarak
   await page.goto("/panel");

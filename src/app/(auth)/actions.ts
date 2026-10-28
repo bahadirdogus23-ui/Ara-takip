@@ -110,5 +110,9 @@ export async function updatePassword(
     password: parsed.data.password,
   });
   if (error) return { error: authErrorMessage(error) };
-  redirect("/panel?sifre=1");
+  // Firması olmayan kullanıcı (ör. yalnızca Hafriyol yöneticisi) başlangıç sayfasına döner
+  const { count } = await supabase
+    .from("memberships")
+    .select("tenant_id", { count: "exact", head: true });
+  redirect(count ? "/panel?sifre=1" : "/basla?sifre=1");
 }

@@ -645,4 +645,34 @@ reset role;
 select pg_temp.check((select count(*) from public.trip_entries where entry_date = '2026-09-28') = 1,
   'T24n Saha personeli 7 gün içindeki tarihe girer');
 
+-- ---------------------------------------------------------------------------
+-- T25: Hafriyol yönetim ekranı verisi yalnızca platform yöneticisine döner
+-- ---------------------------------------------------------------------------
+select pg_temp.login('00000000-0000-0000-0000-00000000000a');
+select pg_temp.check(
+  (select count(*) from public.admin_overview()) = 0
+  and (select count(*) from public.admin_tenant_list()) = 0
+  and (select count(*) from public.admin_users()) = 0
+  and (select count(*) from public.admin_tenant_members(:'tenant_a')) = 0
+  and (select count(*) from public.admin_tenant_sites(:'tenant_a')) = 0,
+  'T25a Firma sahibi de olsa yönetim verisini göremez');
+reset role;
+
+select (select count(*) from public.tenants) as n_tenants, (select count(*) from auth.users) as n_users \gset
+select pg_temp.login('00000000-0000-0000-0000-0000000000ad');
+select pg_temp.check((select tenants_total from public.admin_overview()) = :n_tenants
+  and (select users_total from public.admin_overview()) = :n_users,
+  'T25b Özet firma ve kullanıcı sayıları doğru');
+select pg_temp.check(l.site_count >= 1 and l.vehicle_count >= 1 and l.owner_emails like '%sahip-a@test%' and l.last_activity is not null,
+  'T25c Firma listesinde sayılar, sahip ve son işlem')
+  from public.admin_tenant_list() l where l.id = :'tenant_a';
+select pg_temp.check(exists (select 1 from public.admin_tenant_members(:'tenant_a') where email = 'sahip-a@test' and role = 'owner'),
+  'T25d Firma ayrıntısında sahibi rolüyle görünür');
+select pg_temp.check(exists (select 1 from public.admin_tenant_sites(:'tenant_a') where name = 'Çevre Yolu 1. Kısım'),
+  'T25e Firma ayrıntısında şantiyeler görünür');
+select pg_temp.check((select memberships from public.admin_users() where email = 'sahip-a@test') like '%A Hafriyat Ltd (owner)%'
+  and (select platform_admin from public.admin_users() where email = 'hafriyol@test'),
+  'T25f Kullanıcı listesinde firmalar, roller ve yönetici işareti');
+reset role;
+
 \echo 'TÜM VERİTABANI TESTLERİ GEÇTİ'

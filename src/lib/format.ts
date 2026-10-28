@@ -39,6 +39,19 @@ const tl = new Intl.NumberFormat("tr-TR", {
 export const formatTL = (v: number | null | undefined) => tl.format(v ?? 0);
 
 // "2026-10-22" → "22.10.2026"
+// Zaman damgası: "27.10.2026 14:32" (Türkiye saati)
+export function formatDateTimeTR(iso: string | null | undefined): string {
+  if (!iso) return "—";
+  return new Intl.DateTimeFormat("tr-TR", {
+    timeZone: TZ,
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(new Date(iso));
+}
+
 export function formatDateTR(iso: string | null | undefined): string {
   if (!iso) return "—";
   const [y, m, d] = iso.slice(0, 10).split("-");

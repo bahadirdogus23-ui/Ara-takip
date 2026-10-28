@@ -11,9 +11,9 @@ export const metadata = { title: "Başlayın" };
 export default async function StartPage({
   searchParams,
 }: {
-  searchParams: Promise<{ kod?: string }>;
+  searchParams: Promise<{ kod?: string; sifre?: string }>;
 }) {
-  const { kod } = await searchParams;
+  const { kod, sifre } = await searchParams;
   const supabase = await createClient();
   const {
     data: { user },
@@ -34,6 +34,20 @@ export default async function StartPage({
         </p>
         <p className="mt-1 text-sm text-muted">{user.email}</p>
       </div>
+      {sifre && (
+        <p
+          role="status"
+          className="rounded-md bg-green-50 p-3 text-sm text-green-800"
+        >
+          Şifreniz değiştirildi.
+        </p>
+      )}
+
+      {admin && (
+        <Link href="/yonetim" className="btn-primary w-full gap-2">
+          <ShieldCheck className="size-5" aria-hidden /> Hafriyol yönetim ekranı
+        </Link>
+      )}
 
       <section className="card space-y-3">
         <h1 className="flex items-center gap-2 text-lg font-bold">
@@ -65,14 +79,9 @@ export default async function StartPage({
           Firmalarıma dön
         </Link>
       ) : null}
-      {admin && (
-        <Link
-          href="/yonetim"
-          className="flex items-center justify-center gap-1.5 text-sm font-medium text-brand-strong"
-        >
-          <ShieldCheck className="size-4" aria-hidden /> Hafriyol yönetim
-        </Link>
-      )}
+      <Link href="/sifre-yenile" className="link text-center text-sm">
+        Şifremi değiştir
+      </Link>
       <SignOutButton className="btn-secondary w-full gap-2" label="Çıkış yap" />
     </main>
   );

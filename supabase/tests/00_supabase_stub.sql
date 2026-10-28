@@ -8,8 +8,11 @@ create schema auth;
 grant usage on schema auth to anon, authenticated;
 
 create table auth.users (
-  id    uuid primary key,
-  email text
+  id                 uuid primary key,
+  email              text,
+  created_at         timestamptz not null default now(),
+  last_sign_in_at    timestamptz,
+  email_confirmed_at timestamptz
 );
 
 -- Supabase'teki gibi: oturumdaki kullanıcının kimliği JWT'den okunur.

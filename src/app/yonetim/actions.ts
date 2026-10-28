@@ -36,6 +36,7 @@ export async function setPlan(
   });
   if (error) return { error: dbErrorMessage(error) };
   revalidatePath("/yonetim");
+  revalidatePath(`/yonetim/firma/${id}`);
   return {
     ok: `${id}${action}`,
     message: status === "active" ? "Firma aktif edildi" : "Firma askıya alındı",
