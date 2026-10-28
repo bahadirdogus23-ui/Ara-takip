@@ -529,6 +529,24 @@ export type Database = {
           member_count: number;
         }[];
       };
+      audit_feed: {
+        Args: {
+          p_tenant: string;
+          p_tables?: string[] | null;
+          p_before?: number | null;
+          p_limit?: number;
+        };
+        Returns: {
+          id: number;
+          table_name: string;
+          record_id: string;
+          action: string;
+          old_data: Json | null;
+          new_data: Json | null;
+          changed_at: string;
+          changed_by_email: string | null;
+        }[];
+      };
       admin_overview: {
         Args: Record<string, never>;
         Returns: {

@@ -2,11 +2,12 @@
 
 import { randomUUID } from "node:crypto";
 import { revalidatePath } from "next/cache";
-import { deleteRow } from "@/lib/actions";
+import { deleteRow, updateRow } from "@/lib/actions";
 import { getContext } from "@/lib/context";
 import { dbErrorMessage } from "@/lib/errors";
 import {
   formValues,
+  machineLogEditSchema,
   machineLogSchema,
   toFieldErrors,
   type FormState,
@@ -41,4 +42,15 @@ export async function saveMachineLog(
 
 export async function deleteMachineLog(_prev: FormState, formData: FormData) {
   return deleteRow("machine_logs", formData, PATHS);
+}
+
+export async function updateMachineLog(
+  _prev: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  const values = formValues(formData);
+  const parsed = machineLogEditSchema.safeParse(values);
+  if (!parsed.success)
+    return { fieldErrors: toFieldErrors(parsed.error), values };
+  return updateRow("machine_logs", values.id, parsed.data, PATHS);
 }

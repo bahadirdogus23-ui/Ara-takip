@@ -1149,6 +1149,48 @@ test("K22: kira zammı geçmiş hakedişi değiştirmez, kilitli döneme yazıla
   await page.context().close();
 });
 
+test("K23: kayıt düzeltilir, işlem geçmişinde kim neyi değiştirdi görünür", async ({
+  browser,
+}) => {
+  const page = await newPage(browser);
+  const email = `gecmis-${run}@hafriyol.local`;
+  await signUp(page, { email, password: "Gecmis-12345" });
+  await createTenant(page, "Geçmiş Deneme Yapı");
+  await page.locator("#site_name").fill("Geçmiş Yolu");
+  await page.locator("#vehicles").fill("34 GC 001, Kamyon, 20");
+  await page.getByRole("button", { name: "Kurulumu bitir" }).click();
+  await page.waitForURL("**/sefer?hazir=1");
+
+  // İmalat girilir, sonra Kayıtlar ekranında düzeltilir
+  await page.goto("/gunluk");
+  await page
+    .locator("#pr-work_item_id")
+    .selectOption({ label: "Kazı (her cins zemin) (m³)" });
+  await page.locator("#pr-quantity").fill("100");
+  await page.getByRole("button", { name: "İmalatı kaydet" }).click();
+  await expect(page.getByText("İmalat kaydedildi")).toBeVisible();
+  await page.goto("/kayitlar");
+  const entry = page.locator("li", { hasText: "Kazı (her cins zemin)" });
+  await entry.getByText("Düzelt").click();
+  await entry.locator('input[name="quantity"]').fill("120,5");
+  await entry.locator('input[name="note"]').fill("ölçü düzeltildi");
+  await entry.getByRole("button", { name: "Kaydet" }).click();
+  await expect(entry.getByText("Düzeltildi", { exact: true })).toBeVisible();
+  await page.reload();
+  await expect(page.getByText("120,5 m³").first()).toBeVisible();
+
+  // İşlem geçmişi: değiştiren, eski → yeni değer; süzgeç
+  await page.goto("/islem-gecmisi?grup=imalat");
+  const change = page.locator("li", { hasText: "İmalat değiştirildi" });
+  await expect(change.getByText(email)).toBeVisible();
+  await expect(change.getByText("Miktar: 100 → 120,5")).toBeVisible();
+  await expect(change.getByText("Not: — → ölçü düzeltildi")).toBeVisible();
+  await page.goto("/islem-gecmisi?grup=tanim");
+  await expect(page.getByText("Araç eklendi")).toBeVisible();
+  await expect(page.getByText("İmalat değiştirildi")).toHaveCount(0);
+  await page.context().close();
+});
+
 test("K8: başka firma hiçbir veriyi göremez", async ({ browser }) => {
   const page = await newPage(browser);
   await signUp(page, other);

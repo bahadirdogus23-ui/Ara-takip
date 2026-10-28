@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { FilterBar } from "@/components/filter-bar";
 import { DeleteButton } from "@/components/form";
+import { RecordEdit } from "@/components/record-edit";
 import { canManage, getContext } from "@/lib/context";
 import { readFilters } from "@/lib/filters";
 import { formatDateTR } from "@/lib/format";
@@ -8,7 +9,11 @@ import { formatTrNumber } from "@/lib/number";
 import { fetchAll, loadTripDays } from "@/lib/summaries";
 import { deleteLabels, tripGroups } from "@/lib/trip-groups";
 import { UNITS } from "@/lib/validation";
-import { deleteProduction, deleteTrip } from "../gunluk/actions";
+import {
+  deleteProduction,
+  deleteTrip,
+  updateProduction,
+} from "../gunluk/actions";
 
 export const metadata = { title: "Kayıtlar" };
 
@@ -217,6 +222,21 @@ async function ProductionList({
                     .filter(Boolean)
                     .join(" · ")}
                 </p>
+                {canDelete(r.created_by) && (
+                  <RecordEdit
+                    action={updateProduction}
+                    id={r.id}
+                    fields={[
+                      {
+                        name: "quantity",
+                        label: `Miktar (${unitLabel(item?.unit)})`,
+                        value: r.quantity,
+                        number: true,
+                      },
+                      { name: "note", label: "Not", value: r.note },
+                    ]}
+                  />
+                )}
               </div>
               {canDelete(r.created_by) && (
                 <DeleteButton action={deleteProduction} id={r.id} />

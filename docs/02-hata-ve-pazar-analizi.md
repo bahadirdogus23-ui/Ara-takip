@@ -123,7 +123,7 @@ Amacın: aşağıdaki hataları **önce yeniden üretip testle kanıtlamak**, so
 | H21 | P2 | Service worker önbelleği: yanlış şantiye, paylaşılan telefon, eski veri uyarısı yok | Kodda görüldü | — |
 | H22 | P2 | Fotoğraflar internetsiz kuyruğa alınmıyor; sefere bağlanamıyor | Kodda görüldü | — |
 | H23 | P2 | Tablet ve dizüstünde üst menü ekrandan taşıyor | Doğrulandı | ✔ `75bf9d2` |
-| H24 | P2 | Araç, güzergâh ve üyelik değişiklikleri işlem geçmişine yazılmıyor | Kodda görüldü | — |
+| H24 | P2 | Araç, güzergâh ve üyelik değişiklikleri işlem geçmişine yazılmıyor | Kodda görüldü | ✔ F1-10 (işlem geçmişi ekranı) |
 | H25 | P2 | Kullanıcı ekleme: davet yok, e-posta varlığı sızıyor, rıza alınmıyor | Kodda görüldü | — |
 | H26 | P2 | m³ ve kabarma katsayısı yok; kapasite yalnız ton | Kodda görüldü | — |
 | H27 | P3 | RLS'te çoklu izin politikası (Supabase danışmanı uyarısı) | Doğrulandı | — |
@@ -131,7 +131,7 @@ Amacın: aşağıdaki hataları **önce yeniden üretip testle kanıtlamak**, so
 | H29 | P3 | Excel/PDF'te KDV dahil toplam ondalıklı sayıyla toplanıyor | Kodda görüldü | — |
 | H30 | P3 | Otomatik araç kirası KDV'siz; "KDV dahil toplam" eksik görünür | Kodda görüldü | — |
 | H31 | P3 | Sınırsız firma açılabiliyor | Kodda görüldü | — |
-| H32 | P3 | Kayıt düzenleme yok (yalnız sil ve yeniden gir) | Kodda görüldü | — |
+| H32 | P3 | Kayıt düzenleme yok (yalnız sil ve yeniden gir) | Kodda görüldü | ✔ F1-10 (imalat, makine, gider düzeltme; sefer F1-7) |
 
 ### 4.5 Ayrıntılı bulgular
 

@@ -2,13 +2,14 @@ import { randomUUID } from "node:crypto";
 import { AlertTriangle, Fuel } from "lucide-react";
 import Link from "next/link";
 import { DeleteButton } from "@/components/form";
+import { RecordEdit } from "@/components/record-edit";
 import { SitePicker } from "@/components/site-picker";
 import { canManage, getContext } from "@/lib/context";
 import { fuelCheck } from "@/lib/field-checks";
 import { formatDateTR, workDateTR } from "@/lib/format";
 import { formatTrNumber } from "@/lib/number";
 import { pickSite } from "@/lib/site-pref";
-import { deleteMachineLog } from "./actions";
+import { deleteMachineLog, updateMachineLog } from "./actions";
 import { MachineForm } from "./machine-form";
 
 // Önce iş makineleri; kamyonların da mazot kaydı girilebilir
@@ -177,6 +178,27 @@ export default async function MachinePage({
                     <p className="text-muted">
                       {[l.operator, l.note].filter(Boolean).join(" · ")}
                     </p>
+                    {(manager || l.created_by === user.id) && (
+                      <RecordEdit
+                        action={updateMachineLog}
+                        id={l.id}
+                        fields={[
+                          {
+                            name: "hours",
+                            label: "Saat",
+                            value: l.hours,
+                            number: true,
+                          },
+                          {
+                            name: "fuel_liters",
+                            label: "Mazot (L)",
+                            value: l.fuel_liters,
+                            number: true,
+                          },
+                          { name: "note", label: "Not", value: l.note },
+                        ]}
+                      />
+                    )}
                   </div>
                   {(manager || l.created_by === user.id) && (
                     <DeleteButton action={deleteMachineLog} id={l.id} />

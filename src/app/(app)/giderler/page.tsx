@@ -4,6 +4,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { FilterBar } from "@/components/filter-bar";
 import { DeleteButton } from "@/components/form";
+import { RecordEdit } from "@/components/record-edit";
 import { loadContractorPayments } from "@/lib/contractor";
 import { canManage, getContext } from "@/lib/context";
 import { readFilters } from "@/lib/filters";
@@ -12,7 +13,7 @@ import { expenseTotals, toKurus, toTL } from "@/lib/money";
 import { formatTrNumber } from "@/lib/number";
 import { fetchAll } from "@/lib/summaries";
 import { EXPENSE_CATEGORIES } from "@/lib/validation";
-import { deleteExpense } from "./actions";
+import { deleteExpense, updateExpense } from "./actions";
 import { ExpenseForm } from "./expense-form";
 
 export const metadata = { title: "Giderler" };
@@ -242,6 +243,24 @@ export default async function ExpensesPage({
                       .filter(Boolean)
                       .join(" · ")}
                   </p>
+                  <RecordEdit
+                    action={updateExpense}
+                    id={r.id}
+                    fields={[
+                      {
+                        name: "amount",
+                        label: "Tutar (TL)",
+                        value: r.amount,
+                        number: true,
+                      },
+                      { name: "supplier", label: "Firma", value: r.supplier },
+                      {
+                        name: "description",
+                        label: "Açıklama",
+                        value: r.description,
+                      },
+                    ]}
+                  />
                 </div>
                 <DeleteButton action={deleteExpense} id={r.id} />
               </li>

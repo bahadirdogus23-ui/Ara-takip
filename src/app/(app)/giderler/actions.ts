@@ -2,10 +2,11 @@
 
 import { randomUUID } from "node:crypto";
 import { revalidatePath } from "next/cache";
-import { deleteRow } from "@/lib/actions";
+import { deleteRow, updateRow } from "@/lib/actions";
 import { canManage, getContext } from "@/lib/context";
 import { dbErrorMessage } from "@/lib/errors";
 import {
+  expenseEditSchema,
   expenseSchema,
   formValues,
   toFieldErrors,
@@ -52,4 +53,15 @@ export async function saveExpense(
 
 export async function deleteExpense(_prev: FormState, formData: FormData) {
   return deleteRow("expenses", formData, ["/giderler"]);
+}
+
+export async function updateExpense(
+  _prev: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  const values = formValues(formData);
+  const parsed = expenseEditSchema.safeParse(values);
+  if (!parsed.success)
+    return { fieldErrors: toFieldErrors(parsed.error), values };
+  return updateRow("expenses", values.id, parsed.data, ["/giderler", "/rapor"]);
 }

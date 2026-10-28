@@ -365,6 +365,36 @@ export const machineLogSchema = z
     message: "Çalışma saati veya mazot girin",
   });
 
+// Kayıt düzeltme: yalnızca miktar/saat/tutar ve not değişir (tarih, araç, kalem değişecekse
+// kayıt silinip yeniden girilir; işlem geçmişinde ikisi de görünür)
+export const productionEditSchema = productionSchema.pick({
+  quantity: true,
+  note: true,
+});
+
+export const machineLogEditSchema = z
+  .object({
+    hours: optionalTrNumber({
+      label: "Çalışma saati",
+      decimals: 2,
+      min: 0,
+      minExclusive: true,
+      max: 24,
+    }),
+    fuel_liters: optionalTrNumber({
+      label: "Mazot",
+      decimals: 2,
+      min: 0,
+      minExclusive: true,
+      max: 5000,
+    }),
+    note: optionalText(500),
+  })
+  .refine((m) => m.hours !== null || m.fuel_liters !== null, {
+    path: ["hours"],
+    message: "Çalışma saati veya mazot girin",
+  });
+
 export const EXPENSE_CATEGORIES = {
   fuel: "Mazot / yakıt",
   labor: "İşçilik",
@@ -399,6 +429,12 @@ export const expenseSchema = z.object({
   supplier: optionalText(200),
   description: optionalText(500),
   client_request_id: uuid("Form süresi doldu, sayfayı yenileyin"),
+});
+
+export const expenseEditSchema = expenseSchema.pick({
+  amount: true,
+  supplier: true,
+  description: true,
 });
 
 // Davet kodu: büyük/küçük harf, tire ve boşluk fark etmez ("k7mq 2xpa" → "K7MQ2XPA")

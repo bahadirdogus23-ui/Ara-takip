@@ -2,11 +2,12 @@
 
 import { randomUUID } from "node:crypto";
 import { revalidatePath } from "next/cache";
-import { deleteRow } from "@/lib/actions";
+import { deleteRow, updateRow } from "@/lib/actions";
 import { getContext } from "@/lib/context";
 import { dbErrorMessage } from "@/lib/errors";
 import {
   formValues,
+  productionEditSchema,
   productionSchema,
   toFieldErrors,
   tripSchema,
@@ -73,4 +74,15 @@ export async function deleteProduction(_prev: FormState, formData: FormData) {
 
 export async function deleteTrip(_prev: FormState, formData: FormData) {
   return deleteRow("trip_entries", formData, PATHS);
+}
+
+export async function updateProduction(
+  _prev: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  const values = formValues(formData);
+  const parsed = productionEditSchema.safeParse(values);
+  if (!parsed.success)
+    return { fieldErrors: toFieldErrors(parsed.error), values };
+  return updateRow("production_entries", values.id, parsed.data, PATHS);
 }

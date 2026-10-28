@@ -17,6 +17,29 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 export const isUuid = (v: unknown): v is string =>
   typeof v === "string" && UUID.test(v);
 
+// Bir kaydı düzeltir. Yetki ve tarih kuralları (dönem kilidi, saha personeline 7 gün)
+// veritabanında; izin yoksa hiçbir satır değişmez ve kullanıcıya bildirilir.
+export async function updateRow(
+  table: DeletableTable,
+  id: unknown,
+  row: Record<string, unknown>,
+  paths: string[],
+): Promise<FormState> {
+  if (!isUuid(id)) return { error: "Geçersiz kayıt" };
+  const { supabase, tenant } = await getContext();
+  const { data, error } = await supabase
+    .from(table)
+    .update(row as never)
+    .eq("id", id)
+    .eq("tenant_id", tenant.id)
+    .select("id");
+  if (error) return { error: dbErrorMessage(error) };
+  if (!data?.length)
+    return { error: "Bu kaydı düzeltme yetkiniz yok veya kayıt bulunamadı" };
+  paths.forEach((p) => revalidatePath(p));
+  return { ok: `${id}-${Date.now()}`, message: "Düzeltildi" };
+}
+
 // Bir kaydı siler. Yetki RLS ile veritabanında kontrol edilir: izin yoksa
 // hiçbir satır silinmez ve kullanıcıya bildirilir.
 export async function deleteRow(

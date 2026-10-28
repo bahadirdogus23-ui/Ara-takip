@@ -8,6 +8,7 @@ import {
   Fuel,
   HandCoins,
   HardHat,
+  History,
   Home,
   Menu,
   Plus,
@@ -44,6 +45,12 @@ export const NAV_ITEMS: NavItem[] = [
   },
   { href: "/santiyeler", label: "Şantiyeler", icon: Building2 },
   { href: "/araclar", label: "Araçlar", icon: HardHat },
+  {
+    href: "/islem-gecmisi",
+    label: "İşlem geçmişi",
+    icon: History,
+    managerOnly: true,
+  },
   {
     href: "/kullanicilar",
     label: "Kullanıcılar",

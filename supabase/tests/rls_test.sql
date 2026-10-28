@@ -675,4 +675,27 @@ select pg_temp.check((select memberships from public.admin_users() where email =
   'T25f Kullanıcı listesinde firmalar, roller ve yönetici işareti');
 reset role;
 
+-- ---------------------------------------------------------------------------
+-- T26: İşlem geçmişi (kim neyi değiştirdi)
+-- ---------------------------------------------------------------------------
+select pg_temp.login('00000000-0000-0000-0000-00000000000a');
+update public.vehicles set capacity_ton = 26 where id = :'vehicle_a';
+select pg_temp.check(exists (
+    select 1 from public.audit_feed(:'tenant_a', array['vehicles'])
+    where action = 'UPDATE' and changed_by_email = 'sahip-a@test'
+      and (old_data ->> 'capacity_ton')::numeric = 25 and (new_data ->> 'capacity_ton')::numeric = 26),
+  'T26a Araç değişikliği eski ve yeni değeriyle, değiştirenin e-postasıyla görünür');
+select pg_temp.check(exists (
+    select 1 from public.audit_feed(:'tenant_a', array['memberships']) where action = 'DELETE'),
+  'T26b Kullanıcı çıkarma işlem geçmişine yazılır');
+select pg_temp.check((select count(*) from public.audit_feed(:'tenant_a', null, null, 5)) = 5,
+  'T26c Geçmiş sayfa sayfa okunur');
+reset role;
+select pg_temp.login('00000000-0000-0000-0000-0000000000a2');
+select pg_temp.check((select count(*) from public.audit_feed(:'tenant_a')) = 0, 'T26d Saha personeli işlem geçmişini göremez');
+reset role;
+select pg_temp.login('00000000-0000-0000-0000-00000000000b');
+select pg_temp.check((select count(*) from public.audit_feed(:'tenant_a')) = 0, 'T26e Başka firma işlem geçmişini göremez');
+reset role;
+
 \echo 'TÜM VERİTABANI TESTLERİ GEÇTİ'
